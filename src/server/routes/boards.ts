@@ -38,7 +38,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
 
     const now = Math.floor(Date.now() / 1000)
     const boardRow = board as { id: string }
-    if (now - ((board as any).created_at) > 86400) {
+    if (now - ((board as any).created_at) > 604800) {
       return reply.status(410).send({ error: 'Board has expired.' })
     }
 

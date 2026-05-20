@@ -196,7 +196,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
     if (!boardRow) { ws.close(4004, 'Board not found'); return }
 
     const now = Math.floor(Date.now() / 1000)
-    if (now - boardRow.created_at > 86400) { ws.close(4004, 'Board expired'); return }
+    if (now - boardRow.created_at > 604800) { ws.close(4004, 'Board expired'); return }
 
     const participant = getParticipant.get(boardId, token) as any
     if (!participant) { ws.close(4001, 'Invalid token'); return }

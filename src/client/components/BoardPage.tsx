@@ -204,7 +204,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6">
         <p className="text-text-1 text-lg font-medium">This board has expired.</p>
-        <p className="text-text-2 text-sm">Boards are automatically deleted after 24 hours.</p>
+        <p className="text-text-2 text-sm">Boards are automatically deleted after 7 days.</p>
         <a href="/" className="text-accent hover:underline text-sm mt-2">Start a new retro →</a>
       </div>
     )
@@ -291,6 +291,15 @@ export default function BoardPage() {
         {/* Retention box */}
         <RetentionBox createdAt={boardCreatedAt} />
       </header>
+
+      {/* Lock banner — visible to all participants */}
+      {boardLocked && (
+        <div className="border-b border-warning/40 bg-warning/10 px-4 py-2 flex items-center justify-center gap-2">
+          <span className="text-warning text-base leading-none">🔒</span>
+          <span className="text-warning text-sm font-semibold">Board Locked</span>
+          <span className="text-warning/70 text-xs">— no changes can be made</span>
+        </div>
+      )}
 
       {/* Timer banner — visible to all participants */}
       {timer.expires_at !== null && (
@@ -401,11 +410,13 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
   useEffect(() => {
     if (!createdAt) return
     function update() {
-      const expiresAt = (createdAt! + 86400) * 1000
+      const expiresAt = (createdAt! + 604800) * 1000
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }
+      const dLeft = Math.floor(msLeft / 86_400_000)
       const hLeft = Math.floor(msLeft / 3_600_000)
-      if (hLeft >= 2) setLabel(`Expires in ${hLeft}h`)
+      if (dLeft >= 2) setLabel(`Expires in ${dLeft}d`)
+      else if (hLeft >= 2) setLabel(`Expires in ${hLeft}h`)
       else {
         const mLeft = Math.floor(msLeft / 60_000)
         setLabel(`Expires in ${mLeft}m`)
