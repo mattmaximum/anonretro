@@ -28,8 +28,15 @@ function RevealDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel
   )
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s === 0 ? `${m}m` : `${m}m ${s}s`
+}
+
 export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: Props) {
-  const [duration, setDuration] = useState(5)
+  const [duration, setDuration] = useState(30)  // seconds
   const [label, setLabel] = useState('')
   const [showRevealDialog, setShowRevealDialog] = useState(false)
 
@@ -37,7 +44,7 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
   const timerPaused = timer.expires_at !== null && timer.paused_at !== null
 
   function startTimer() {
-    onSend({ type: 'admin:timer_start', admin_token: adminToken, duration_seconds: duration * 60, label })
+    onSend({ type: 'admin:timer_start', admin_token: adminToken, duration_seconds: duration, label })
     setLabel('')
   }
 
@@ -87,12 +94,13 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-xs text-text-3">
                 <span>Duration</span>
-                <span>{duration} min</span>
+                <span>{formatDuration(duration)}</span>
               </div>
               <input
                 type="range"
-                min={1}
-                max={60}
+                min={30}
+                max={3600}
+                step={30}
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
                 className="w-full accent-accent"
@@ -106,7 +114,7 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
               />
               <button
                 onClick={startTimer}
-                disabled={duration < 1}
+                disabled={duration < 30}
                 className="w-full bg-success/20 hover:bg-success/30 text-success font-medium py-1.5 rounded text-sm transition-colors disabled:opacity-40"
               >
                 Start timer

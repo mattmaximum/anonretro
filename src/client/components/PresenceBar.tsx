@@ -13,8 +13,12 @@ export default function PresenceBar({ participants, myColor, myAnimal, isAdmin }
   const visible = participants.slice(0, MAX_VISIBLE)
   const overflow = participants.length - MAX_VISIBLE
 
+  const identityLabel = isAdmin
+    ? `You're the ${myColor} ${myAnimal} · Facilitator`
+    : `You're the ${myColor} ${myAnimal}`
+
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5 flex-wrap">
         {visible.map((p, i) => {
           const hex = COLOR_HEX[p.color] ?? '#888'
@@ -24,11 +28,11 @@ export default function PresenceBar({ participants, myColor, myAnimal, isAdmin }
             <div
               key={i}
               title={`${p.color} ${p.animal}${isMe ? ' (you)' : ''}`}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${isMe ? 'ring-2 ring-accent ring-offset-1 ring-offset-base' : ''}`}
-              style={{ background: hex, color: textColor }}
+              className={`h-8 min-w-8 px-1.5 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${isMe ? 'ring-2 ring-accent ring-offset-1 ring-offset-base' : ''}`}
+              style={{ background: hex, color: textColor, fontSize: '9px' }}
               aria-label={`${p.color} ${p.animal}${isMe ? ' (you)' : ''}`}
             >
-              {p.animal.slice(0, 3).toUpperCase()}
+              {p.animal}
             </div>
           )
         })}
@@ -38,9 +42,7 @@ export default function PresenceBar({ participants, myColor, myAnimal, isAdmin }
           </div>
         )}
       </div>
-      {isAdmin && (
-        <p className="text-text-3 text-[11px]">You're the facilitator</p>
-      )}
+      <p className="text-text-3 text-[11px]">{identityLabel}</p>
     </div>
   )
 }
