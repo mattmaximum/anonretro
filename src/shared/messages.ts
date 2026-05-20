@@ -22,10 +22,10 @@ export type InboundMessage = z.infer<typeof InboundSchema>
 export interface CardData {
   id: string
   column_id: string
-  content: string | null  // null when blurred for this recipient
+  content: string         // scrambled (first 3 words + …) when blurred for this recipient
   blur: boolean
   votes: number
-  author: string | null   // "Color Animal", null when blurred
+  author: string | null   // "Color Animal" — always sent, never scrambled
   is_own: boolean
   created_at: number
 }

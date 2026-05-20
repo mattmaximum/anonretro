@@ -11,29 +11,24 @@ interface Props {
   myVotes: Set<string>
 }
 
+function EyeIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, onDelete, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(card.content ?? '')
+  const [draft, setDraft] = useState(card.content)
   const isRevealing = revealedIds.has(card.id)
   const voted = myVotes.has(card.id)
 
-  // Reveal stagger animation: delay = index * 50ms
   const revealStyle = isRevealing
-    ? { opacity: 1, transition: `opacity 0.4s ease ${revealIndex * 50}ms` }
-    : card.blur
-    ? { opacity: 1 }
+    ? { transition: `opacity 0.4s ease ${revealIndex * 50}ms` }
     : {}
-
-  if (card.blur) {
-    return (
-      <div
-        className="w-full rounded border border-border bg-blur-fill"
-        style={{ height: 72 }}
-        aria-label="Hidden card"
-        role="article"
-      />
-    )
-  }
 
   return (
     <div
@@ -41,7 +36,11 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
       style={revealStyle}
       role="article"
     >
-      {editing ? (
+      {card.blur ? (
+        <p className="text-sm text-text-3 leading-relaxed select-none" aria-label="Hidden card">
+          {card.content}
+        </p>
+      ) : editing ? (
         <form
           onSubmit={e => {
             e.preventDefault()
@@ -66,14 +65,22 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-text-3 text-xs">{card.is_own ? 'You' : (card.author ?? '')}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-text-3 text-xs">{card.is_own ? 'You' : (card.author ?? '')}</span>
+          {card.blur && (
+            <span className="flex items-center gap-0.5 text-text-3 text-[10px]">
+              <EyeIcon />
+              <span>(Hidden)</span>
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Edit / delete (own cards only, not while revealing) */}
           {card.is_own && !editing && !revealedIds.size && (
             <div className="hidden group-hover:flex items-center gap-1">
               <button
-                onClick={() => { setDraft(card.content ?? ''); setEditing(true) }}
+                onClick={() => { setDraft(card.content); setEditing(true) }}
                 className="text-text-3 hover:text-text-2 text-xs px-1"
                 aria-label="Edit card"
               >

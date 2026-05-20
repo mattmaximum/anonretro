@@ -50,6 +50,32 @@ function send(ws: WebSocket, msg: OutboundMessage) {
   if (ws.readyState === 1) ws.send(JSON.stringify(msg))
 }
 
+// ── Scramble helpers ──────────────────────────────────────────────────────────
+
+function idSeed(id: string): number {
+  let h = 0
+  for (const c of id) h = Math.imul(31, h) + c.charCodeAt(0) | 0
+  return Math.abs(h)
+}
+
+function scrambleWord(word: string, seed: number): string {
+  const arr = word.split('')
+  let s = seed
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    const j = Math.abs(s) % (i + 1)
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr.join('')
+}
+
+function scrambleContent(content: string, cardId: string): string {
+  const seed = idSeed(cardId)
+  const words = content.trim().split(/\s+/)
+  const preview = words.slice(0, 3).map((w, i) => scrambleWord(w, seed + i))
+  return words.length > 3 ? preview.join(' ') + ' …' : preview.join(' ')
+}
+
 // ── Per-recipient card shape ──────────────────────────────────────────────────
 
 function buildCard(
@@ -59,13 +85,14 @@ function buildCard(
 ): CardData {
   const isOwn = row.creator_token === viewerToken
   const blur = blurEnabled && !isOwn
+  const author = [row._color, row._animal].filter(Boolean).join(' ') || null
   return {
     id:         row.id,
     column_id:  row.column_id,
-    content:    blur ? null : row.content,
+    content:    blur ? scrambleContent(row.content, row.id) : row.content,
     blur,
     votes:      row.votes,
-    author:     blur ? null : [row._color, row._animal].filter(Boolean).join(' ') || null,
+    author,                // always send — never scramble the author
     is_own:     isOwn,
     created_at: row.created_at,
   }
