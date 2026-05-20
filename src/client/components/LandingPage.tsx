@@ -62,6 +62,7 @@ export default function LandingPage() {
             placeholder="Board title (e.g. Sprint 42 Retro) *"
             className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
           />
+          <p className="text-text-3 text-xs font-medium uppercase tracking-wide">Select your board format</p>
           <div className="flex flex-col gap-2">
             {FORMATS.map(f => (
               <button
