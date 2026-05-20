@@ -257,8 +257,8 @@ export default function BoardPage() {
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
-          <a href="/" className="text-text-3 hover:text-text-2 text-xs font-medium tracking-wide flex-shrink-0 transition-colors">
-            AnonRetro
+          <a href="/" className="text-xs font-medium px-2.5 py-1 rounded border border-border text-text-2 hover:text-text-1 hover:border-border-active flex-shrink-0 transition-colors">
+            Go Home
           </a>
           <div className="flex flex-col min-w-0 gap-0.5">
             {boardTitle && (

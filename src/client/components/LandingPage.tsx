@@ -112,10 +112,6 @@ export default function LandingPage() {
           AnonRetro is built to be the fastest way to run a team retrospective—no accounts, no tracking, and no paywalls.
           To keep it that way, I rely on the community to help cover the server hosting and development time.
         </p>
-        <p className="text-text-2 text-sm leading-relaxed">
-          If this tool helped you out in a pinch today, consider dropping a tip. If it's becoming a staple for your team,
-          expense a supporter tier and get a permanent shout-out!
-        </p>
       </div>
     </div>
   )
