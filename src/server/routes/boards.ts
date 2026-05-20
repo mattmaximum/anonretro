@@ -13,13 +13,14 @@ import { broadcast } from '../ws.js'
 export default async function boardRoutes(fastify: FastifyInstance) {
   // POST /api/boards — create a new board
   fastify.post('/api/boards', async (req, reply) => {
-    const body = req.body as { format?: string }
+    const body = req.body as { format?: string; title?: string }
     const format = FORMATS.find(f => f.id === body?.format) ?? FORMATS[0]
+    const title = (body?.title ?? '').trim().slice(0, 100)
     const id = nanoid(21)
     const adminToken = randomBytes(16).toString('hex')
     const now = Math.floor(Date.now() / 1000)
 
-    insertBoard.run(id, adminToken, format.id, now, now)
+    insertBoard.run(id, adminToken, format.id, title, now, now)
     recordDailyBoardCreated.run(utcDate())
 
     // Fire-and-forget eviction — runs after 201 returned

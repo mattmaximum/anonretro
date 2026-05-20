@@ -42,7 +42,7 @@ export interface TimerState {
 }
 
 export type OutboundMessage =
-  | { type: 'board_state'; blur_enabled: boolean; cards: CardData[]; participants: ParticipantData[]; timer: TimerState; is_admin: boolean; format: string; created_at: number; my_voted_card_ids: string[] }
+  | { type: 'board_state'; blur_enabled: boolean; cards: CardData[]; participants: ParticipantData[]; timer: TimerState; is_admin: boolean; format: string; title: string; created_at: number; my_voted_card_ids: string[] }
   | { type: 'card_update'; card: CardData }
   | { type: 'card_deleted'; id: string }
   | { type: 'presence'; participants: ParticipantData[] }

@@ -222,6 +222,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
       timer: { expires_at: boardRow.timer_expires_at, paused_at: boardRow.timer_paused_at, label: boardRow.timer_label },
       is_admin: boardRow.admin_token === token,
       format: boardRow.format,
+      title: boardRow.title ?? '',
       created_at: boardRow.created_at,
       my_voted_card_ids: myVotedCards,
     })

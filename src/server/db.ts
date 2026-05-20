@@ -62,6 +62,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_votes_card ON votes(card_id);
 `)
 
+// Migrations for columns added after initial schema
+try { db.exec("ALTER TABLE boards ADD COLUMN title TEXT NOT NULL DEFAULT ''") } catch { /* already exists */ }
+
 // ── Prepared statements ──────────────────────────────────────────────────────
 
 export const getBoard = db.prepare<[string]>(
@@ -69,7 +72,7 @@ export const getBoard = db.prepare<[string]>(
 )
 
 export const insertBoard = db.prepare(
-  'INSERT INTO boards (id, admin_token, blur_enabled, format, last_activity_at, created_at) VALUES (?, ?, 1, ?, ?, ?)'
+  'INSERT INTO boards (id, admin_token, blur_enabled, format, title, last_activity_at, created_at) VALUES (?, ?, 1, ?, ?, ?, ?)'
 )
 
 export const updateBoardActivity = db.prepare<[number, string]>(

@@ -22,6 +22,7 @@ export default function BoardPage() {
   const [blurEnabled, setBlurEnabled] = useState(true)
   const [timer, setTimer] = useState<TimerState>({ expires_at: null, paused_at: null, label: null })
   const [format, setFormat] = useState('mad-sad-glad')
+  const [boardTitle, setBoardTitle] = useState('')
   const [boardCreatedAt, setBoardCreatedAt] = useState<number | null>(null)
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set())
   const [revealSequence, setRevealSequence] = useState<string[]>([])
@@ -87,6 +88,7 @@ export default function BoardPage() {
         setTimer(msg.timer)
         setMyVotes(new Set(msg.my_voted_card_ids))
         setFormat(msg.format)
+        setBoardTitle(msg.title)
         setBoardCreatedAt(msg.created_at)
         break
 
@@ -163,6 +165,12 @@ export default function BoardPage() {
       setSearchParams(sp, { replace: true })
     }
   }, [showShare])
+
+  // Keep browser tab title in sync
+  useEffect(() => {
+    document.title = boardTitle ? `${boardTitle} — AnonRetro` : 'AnonRetro'
+    return () => { document.title = 'AnonRetro' }
+  }, [boardTitle])
 
   // Onboarding auto-dismiss
   useEffect(() => {
@@ -248,8 +256,16 @@ export default function BoardPage() {
 
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-text-1 text-sm">{fmt.name}</span>
+        <div className="flex items-center gap-4 min-w-0">
+          <a href="/" className="text-text-3 hover:text-text-2 text-xs font-medium tracking-wide flex-shrink-0 transition-colors">
+            AnonRetro
+          </a>
+          <div className="flex flex-col min-w-0">
+            {boardTitle && (
+              <span className="font-semibold text-text-1 text-sm leading-tight truncate">{boardTitle}</span>
+            )}
+            <span className={`text-text-3 leading-tight ${boardTitle ? 'text-[11px]' : 'text-sm font-semibold text-text-1'}`}>{fmt.name}</span>
+          </div>
           {identity && (
             <PresenceBar
               participants={participants}

@@ -6,6 +6,7 @@ import { storage } from '../lib/storage.js'
 export default function LandingPage() {
   const navigate = useNavigate()
   const [format, setFormat] = useState(FORMATS[0].id)
+  const [title, setTitle] = useState('')
   const [joinId, setJoinId] = useState('')
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
@@ -18,7 +19,7 @@ export default function LandingPage() {
       const res = await fetch('/api/boards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format }),
+        body: JSON.stringify({ format, title: title.trim() }),
       })
       if (!res.ok) throw new Error('Failed to create board')
       const data = await res.json()
@@ -49,6 +50,14 @@ export default function LandingPage() {
         {/* Create */}
         <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
           <h2 className="font-semibold text-text-1">New board</h2>
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            maxLength={100}
+            placeholder="Board title (e.g. Sprint 42 Retro)"
+            className="bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active"
+          />
           <div className="flex flex-col gap-2">
             {FORMATS.map(f => (
               <button
@@ -94,6 +103,19 @@ export default function LandingPage() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Support section */}
+      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 flex flex-col gap-3">
+        <h2 className="font-semibold text-text-1 text-sm">Keep AnonRetro Free &amp; Frictionless</h2>
+        <p className="text-text-2 text-sm leading-relaxed">
+          AnonRetro is built to be the fastest way to run a team retrospective—no accounts, no tracking, and no paywalls.
+          To keep it that way, I rely on the community to help cover the server hosting and development time.
+        </p>
+        <p className="text-text-2 text-sm leading-relaxed">
+          If this tool helped you out in a pinch today, consider dropping a tip. If it's becoming a staple for your team,
+          expense a supporter tier and get a permanent shout-out!
+        </p>
       </div>
     </div>
   )
