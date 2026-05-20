@@ -182,6 +182,14 @@ export const getActiveTimers = db.prepare(`
 
 // ── Transactions ─────────────────────────────────────────────────────────────
 
+export const deleteBoardFull = db.transaction((boardId: string) => {
+  // Delete in FK-safe order: votes → cards → participants → board
+  db.prepare('DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id = ?)').run(boardId)
+  db.prepare('DELETE FROM cards WHERE board_id = ?').run(boardId)
+  db.prepare('DELETE FROM participants WHERE board_id = ?').run(boardId)
+  deleteBoard.run(boardId)
+})
+
 export const voteToggleTx = db.transaction((cardId: string, token: string) => {
   const existing = getVote.get(cardId, token)
   if (existing) {

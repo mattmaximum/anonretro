@@ -6,7 +6,27 @@ interface Props {
   adminToken: string
   blurEnabled: boolean
   timer: TimerState
+  boardId: string
   onSend: (msg: object) => void
+}
+
+function DeleteDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-raised rounded-lg p-6 w-full max-w-sm flex flex-col gap-4">
+        <h3 className="font-semibold text-text-1">Delete this board?</h3>
+        <p className="text-text-2 text-sm">All cards, votes, and participants will be permanently removed. Everyone will be redirected to the home page. This can't be undone.</p>
+        <div className="flex gap-3">
+          <button onClick={onConfirm} className="flex-1 bg-danger hover:bg-danger/80 text-white font-medium py-2 rounded transition-colors text-sm">
+            Delete board
+          </button>
+          <button onClick={onCancel} className="flex-1 text-text-2 hover:text-text-1 border border-border rounded py-2 text-sm transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function RevealDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
@@ -35,10 +55,12 @@ function formatDuration(seconds: number): string {
   return s === 0 ? `${m}m` : `${m}m ${s}s`
 }
 
-export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: Props) {
+export default function AdminPanel({ adminToken, blurEnabled, timer, boardId, onSend }: Props) {
   const [duration, setDuration] = useState(30)  // seconds
   const [label, setLabel] = useState('')
   const [showRevealDialog, setShowRevealDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const timerRunning = timer.expires_at !== null && timer.paused_at === null
   const timerPaused = timer.expires_at !== null && timer.paused_at !== null
@@ -46,6 +68,19 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
   function startTimer() {
     onSend({ type: 'admin:timer_start', admin_token: adminToken, duration_seconds: duration, label })
     setLabel('')
+  }
+
+  async function handleDeleteConfirm() {
+    setDeleting(true)
+    setShowDeleteDialog(false)
+    try {
+      await fetch(`/api/boards/${boardId}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': adminToken },
+      })
+    } finally {
+      window.location.href = '/'
+    }
   }
 
   function handleRevealConfirm() {
@@ -57,6 +92,12 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
 
   return (
     <>
+      {showDeleteDialog && (
+        <DeleteDialog
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setShowDeleteDialog(false)}
+        />
+      )}
       {showRevealDialog && (
         <RevealDialog
           onConfirm={handleRevealConfirm}
@@ -170,6 +211,17 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, onSend }: P
           >
             Export CSV
           </a>
+        </div>
+
+        {/* Danger zone */}
+        <div className="border-t border-danger/30 pt-3">
+          <button
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={deleting}
+            className="w-full text-danger hover:text-danger/70 text-xs py-1.5 rounded border border-danger/30 hover:border-danger/50 transition-colors disabled:opacity-40"
+          >
+            {deleting ? 'Deleting…' : 'Delete board'}
+          </button>
         </div>
       </div>
     </>

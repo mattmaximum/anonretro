@@ -4,10 +4,11 @@ import { nanoid } from 'nanoid'
 import {
   insertBoard, getBoard, getParticipant, countBoards,
   getOldestBoards, deleteBoard, joinBoardTx,
-  recordDailyBoardCreated, recordDailyParticipantJoined,
+  recordDailyBoardCreated, recordDailyParticipantJoined, deleteBoardFull,
 } from '../db.js'
 import { IDENTITY_POOL, EVICTION_LIMIT } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
+import { broadcast } from '../ws.js'
 
 export default async function boardRoutes(fastify: FastifyInstance) {
   // POST /api/boards — create a new board
@@ -64,6 +65,23 @@ export default async function boardRoutes(fastify: FastifyInstance) {
       color: identity.color,
       animal: identity.animal,
     })
+  })
+
+  // DELETE /api/boards/:id — admin-only hard delete
+  fastify.delete('/api/boards/:id', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const adminToken = req.headers['x-admin-token'] as string | undefined
+    if (!adminToken) return reply.status(401).send({ error: 'Missing admin token.' })
+
+    const board = getBoard.get(id) as any
+    if (!board) return reply.status(404).send({ error: 'Board not found.' })
+    if (board.admin_token !== adminToken) return reply.status(403).send({ error: 'Invalid admin token.' })
+
+    // Broadcast before deleting so sockets still exist in boardSockets map
+    broadcast(id, { type: 'board_deleted' })
+    deleteBoardFull(id)
+
+    return reply.status(204).send()
   })
 }
 

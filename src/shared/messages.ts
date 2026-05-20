@@ -53,4 +53,5 @@ export type OutboundMessage =
   | { type: 'timer:resumed';   expires_at: number }
   | { type: 'timer:cancelled' }
   | { type: 'timer:expired' }
+  | { type: 'board_deleted' }
   | { type: 'error'; code: 'INVALID_MESSAGE' | 'RATE_LIMITED' | 'NOT_OWNER' | 'NOT_ADMIN' | 'BOARD_EXPIRED' | 'BOARD_NOT_FOUND' }

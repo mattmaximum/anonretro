@@ -28,6 +28,7 @@ export default function BoardPage() {
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting')
   const [expiredCode, setExpiredCode] = useState<number | null>(null)
+  const [boardDeletedByAdmin, setBoardDeletedByAdmin] = useState(false)
 
   // Identity
   const [token, setToken] = useState<string | null>(null)
@@ -136,6 +137,10 @@ export default function BoardPage() {
       case 'timer:expired':
         setTimer({ expires_at: null, paused_at: null, label: null })
         break
+
+      case 'board_deleted':
+        setBoardDeletedByAdmin(true)
+        break
     }
   }, [])
 
@@ -171,11 +176,21 @@ export default function BoardPage() {
 
   // ── Expiry screens ───────────────────────────────────────────────────────────
 
+  if (boardDeletedByAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6">
+        <p className="text-text-1 text-lg font-medium">This board was deleted by the facilitator.</p>
+        <p className="text-text-2 text-sm">The session has ended.</p>
+        <a href="/" className="text-accent hover:underline text-sm mt-2">Start or join a retro →</a>
+      </div>
+    )
+  }
+
   if (expiredCode === 4004 || expiredCode === 410) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6">
         <p className="text-text-1 text-lg font-medium">This board has expired.</p>
-        <p className="text-text-2 text-sm">The retro session ended and the board was deleted.</p>
+        <p className="text-text-2 text-sm">Boards are automatically deleted after 24 hours.</p>
         <a href="/" className="text-accent hover:underline text-sm mt-2">Start a new retro →</a>
       </div>
     )
@@ -332,6 +347,7 @@ export default function BoardPage() {
               adminToken={adminToken}
               blurEnabled={blurEnabled}
               timer={timer}
+              boardId={boardId!}
               onSend={send}
             />
           </aside>
@@ -340,7 +356,7 @@ export default function BoardPage() {
 
       {/* Admin FAB — mobile */}
       {isAdmin && adminToken && (
-        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} onSend={send} />
+        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} boardId={boardId!} onSend={send} />
       )}
     </div>
   )
@@ -375,8 +391,8 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
 
 // ── Mobile Admin FAB + Bottom Sheet ──────────────────────────────────────────
 
-function MobileAdminFAB({ adminToken, blurEnabled, timer, onSend }: {
-  adminToken: string; blurEnabled: boolean; timer: TimerState; onSend: (msg: object) => void
+function MobileAdminFAB({ adminToken, blurEnabled, timer, boardId, onSend }: {
+  adminToken: string; blurEnabled: boolean; timer: TimerState; boardId: string; onSend: (msg: object) => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -400,7 +416,7 @@ function MobileAdminFAB({ adminToken, blurEnabled, timer, onSend }: {
               <p className="font-semibold text-text-1">Admin controls</p>
               <button onClick={() => setOpen(false)} className="text-text-3 hover:text-text-2">✕</button>
             </div>
-            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} onSend={onSend} />
+            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} boardId={boardId} onSend={onSend} />
           </div>
         </div>
       )}
