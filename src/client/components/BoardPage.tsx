@@ -389,6 +389,7 @@ export default function BoardPage() {
               timer={timer}
               boardId={boardId!}
               onSend={send}
+              onShare={() => setShowShare(true)}
             />
           </aside>
         )}
@@ -396,7 +397,7 @@ export default function BoardPage() {
 
       {/* Facilitator Controls FAB — mobile */}
       {isAdmin && adminToken && (
-        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} locked={boardLocked} timer={timer} boardId={boardId!} onSend={send} />
+        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} locked={boardLocked} timer={timer} boardId={boardId!} onSend={send} onShare={() => setShowShare(true)} />
       )}
     </div>
   )
@@ -433,8 +434,8 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
 
 // ── Mobile Admin FAB + Bottom Sheet ──────────────────────────────────────────
 
-function MobileAdminFAB({ adminToken, blurEnabled, locked, timer, boardId, onSend }: {
-  adminToken: string; blurEnabled: boolean; locked: boolean; timer: TimerState; boardId: string; onSend: (msg: object) => void
+function MobileAdminFAB({ adminToken, blurEnabled, locked, timer, boardId, onSend, onShare }: {
+  adminToken: string; blurEnabled: boolean; locked: boolean; timer: TimerState; boardId: string; onSend: (msg: object) => void; onShare: () => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -458,7 +459,7 @@ function MobileAdminFAB({ adminToken, blurEnabled, locked, timer, boardId, onSen
               <p className="font-semibold text-text-1">Facilitator Controls</p>
               <button onClick={() => setOpen(false)} className="text-text-3 hover:text-text-2">✕</button>
             </div>
-            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} locked={locked} timer={timer} boardId={boardId} onSend={onSend} />
+            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} locked={locked} timer={timer} boardId={boardId} onSend={onSend} onShare={onShare} />
           </div>
         </div>
       )}

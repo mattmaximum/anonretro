@@ -9,6 +9,7 @@ interface Props {
   timer: TimerState
   boardId: string
   onSend: (msg: object) => void
+  onShare: () => void
 }
 
 function DeleteDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
@@ -57,7 +58,7 @@ function formatDuration(seconds: number): string {
   return s === 0 ? `${m}m` : `${m}m ${s}s`
 }
 
-export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boardId, onSend }: Props) {
+export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boardId, onSend, onShare }: Props) {
   const [duration, setDuration] = useState(30)  // seconds
   const [label, setLabel] = useState('')
   const [showRevealDialog, setShowRevealDialog] = useState(false)
@@ -107,6 +108,14 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
       )}
 
       <div className="flex flex-col gap-4">
+        {/* Share */}
+        <button
+          onClick={onShare}
+          className="w-full border border-border hover:border-border-active text-text-2 hover:text-text-1 py-2 rounded text-sm transition-colors flex items-center justify-center gap-2"
+        >
+          <span>⬆</span> Share / QR Code
+        </button>
+
         {/* Lock board */}
         <div className="flex flex-col gap-2">
           <p className="text-text-2 text-xs font-medium uppercase tracking-wide">Board</p>
