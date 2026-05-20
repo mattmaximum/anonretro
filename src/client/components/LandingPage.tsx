@@ -13,6 +13,7 @@ export default function LandingPage() {
   const [error, setError] = useState('')
 
   async function handleCreate() {
+    if (!title.trim()) { setError('Board title is required.'); return }
     setCreating(true)
     setError('')
     try {
@@ -49,14 +50,17 @@ export default function LandingPage() {
       <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
         {/* Create */}
         <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
-          <h2 className="font-semibold text-text-1">New board</h2>
+          <div>
+            <h2 className="font-semibold text-text-1">New board</h2>
+            <p className="text-text-3 text-xs mt-0.5">For facilitators only</p>
+          </div>
           <input
             type="text"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
             maxLength={100}
-            placeholder="Board title (e.g. Sprint 42 Retro)"
-            className="bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active"
+            placeholder="Board title (e.g. Sprint 42 Retro) *"
+            className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
           />
           <div className="flex flex-col gap-2">
             {FORMATS.map(f => (
