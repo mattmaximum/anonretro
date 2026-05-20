@@ -11,14 +11,6 @@ interface Props {
   myVotes: Set<string>
 }
 
-function EyeIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
 
 export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, onDelete, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
@@ -37,8 +29,10 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
       role="article"
     >
       {card.blur ? (
-        <p className="text-sm text-text-1 italic leading-relaxed select-none" aria-label="Hidden card">
-          {card.content}
+        <p className="text-sm italic leading-relaxed select-none" aria-label="Hidden card">
+          <span className="text-text-1">{card.content}</span>
+          {' '}
+          <span className="text-text-3 text-[11px] not-italic">(Hidden: wait for facilitator to reveal)</span>
         </p>
       ) : editing ? (
         <form
@@ -67,12 +61,6 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-text-3 text-xs">{card.is_own ? 'You' : (card.author ?? '')}</span>
-          {card.blur && (
-            <span className="flex items-center gap-0.5 text-text-3 text-[10px]">
-              <EyeIcon />
-              <span>(Hidden)</span>
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
