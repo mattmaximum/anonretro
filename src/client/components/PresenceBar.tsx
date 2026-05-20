@@ -13,9 +13,14 @@ export default function PresenceBar({ participants, myColor, myAnimal, isAdmin }
   const visible = participants.slice(0, MAX_VISIBLE)
   const overflow = participants.length - MAX_VISIBLE
 
-  const identityLabel = isAdmin
-    ? `You're the ${myColor} ${myAnimal} · Facilitator`
-    : `You're the ${myColor} ${myAnimal}`
+  const otherCount = participants.length - 1
+  const you = `You're the ${myColor} ${myAnimal}${isAdmin ? ' · Facilitator' : ''}`
+  const others = otherCount <= 0
+    ? "You're the only one here so far."
+    : otherCount === 1
+      ? `joined by 1 other colorful animal. Don't reveal who you are unless you want to.`
+      : `joined by ${otherCount} other colorful animals. Don't reveal who you are unless you want to.`
+  const identityLabel = otherCount <= 0 ? you + '. ' + others : `${you}, ${others}`
 
   return (
     <div className="flex flex-col gap-1">

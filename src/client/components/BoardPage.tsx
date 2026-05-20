@@ -260,11 +260,17 @@ export default function BoardPage() {
           <a href="/" className="text-text-3 hover:text-text-2 text-xs font-medium tracking-wide flex-shrink-0 transition-colors">
             AnonRetro
           </a>
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col min-w-0 gap-0.5">
             {boardTitle && (
-              <span className="font-semibold text-text-1 text-sm leading-tight truncate">{boardTitle}</span>
+              <span className="text-sm leading-tight truncate">
+                <span className="text-text-3 font-normal">Board Name: </span>
+                <span className="font-semibold text-text-1">{boardTitle}</span>
+              </span>
             )}
-            <span className={`text-text-3 leading-tight ${boardTitle ? 'text-[11px]' : 'text-sm font-semibold text-text-1'}`}>{fmt.name}</span>
+            <span className="text-[11px] leading-tight">
+              <span className="text-text-3">Board Type: </span>
+              <span className="text-text-2">{fmt.name}</span>
+            </span>
           </div>
           {identity && (
             <PresenceBar
