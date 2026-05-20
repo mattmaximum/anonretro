@@ -5,7 +5,7 @@ import {
   insertCard, updateCard, deleteCard, voteToggleTx,
   updateBoardBlur, updateBoardActivity, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
-  getVotesByParticipant,
+  getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
 } from './db.js'
 import { nanoid } from 'nanoid'
 import { InboundSchema } from '../shared/messages.js'
@@ -14,10 +14,18 @@ import { getFormat } from '../shared/formats.js'
 import { CARD_MAX_LENGTH } from '../shared/constants.js'
 import { armTimer, disarmTimer } from './timer.js'
 
+function utcDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 // ── Registries ────────────────────────────────────────────────────────────────
 
 // participant_token → WebSocket (replace-on-reconnect)
 export const participantSockets = new Map<string, WebSocket>()
+
+export function getConnectedCount(): number {
+  return participantSockets.size
+}
 
 // boardId → Set<WebSocket>
 export const boardSockets = new Map<string, Set<WebSocket>>()
@@ -247,6 +255,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           insertCard.run(id, boardId, token, msg.column_id, content, ts, ts)
+          recordDailyCardCreated.run(utcDate())
           updateBoardActivity.run(ts, boardId)
           broadcastCardUpdate(boardId, { id, board_id: boardId, creator_token: token, column_id: msg.column_id, content, votes: 0, created_at: ts, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
           break
@@ -317,6 +326,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const expiresAt = Math.floor(Date.now() / 1000) + msg.duration_seconds
           updateTimerStart.run(expiresAt, msg.label, boardId)
+          recordDailyTimerStarted.run(utcDate())
           armTimer(boardId, expiresAt)
           broadcast(boardId, { type: 'timer:started', expires_at: expiresAt, label: msg.label })
           break

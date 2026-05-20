@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 
-const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), 'data', 'anonretro.db')
+export const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), 'data', 'anonretro.db')
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
 
 const db = new Database(DB_PATH)
@@ -47,6 +47,14 @@ db.exec(`
     card_id           TEXT NOT NULL,
     participant_token TEXT NOT NULL,
     PRIMARY KEY (card_id, participant_token)
+  );
+
+  CREATE TABLE IF NOT EXISTS daily_stats (
+    date                TEXT PRIMARY KEY,
+    boards_created      INTEGER NOT NULL DEFAULT 0,
+    participants_joined INTEGER NOT NULL DEFAULT 0,
+    cards_created       INTEGER NOT NULL DEFAULT 0,
+    timers_started      INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE INDEX IF NOT EXISTS idx_cards_board ON cards(board_id);
@@ -207,5 +215,46 @@ export const joinBoardTx = db.transaction((
   insertParticipant.run(boardId, token, identity.color, identity.animal, now)
   return { identity }
 })
+
+// ── Daily stats ───────────────────────────────────────────────────────────────
+
+export const recordDailyBoardCreated = db.prepare(`
+  INSERT INTO daily_stats (date, boards_created) VALUES (?, 1)
+  ON CONFLICT (date) DO UPDATE SET boards_created = boards_created + 1
+`)
+
+export const recordDailyParticipantJoined = db.prepare(`
+  INSERT INTO daily_stats (date, participants_joined) VALUES (?, 1)
+  ON CONFLICT (date) DO UPDATE SET participants_joined = participants_joined + 1
+`)
+
+export const recordDailyCardCreated = db.prepare(`
+  INSERT INTO daily_stats (date, cards_created) VALUES (?, 1)
+  ON CONFLICT (date) DO UPDATE SET cards_created = cards_created + 1
+`)
+
+export const recordDailyTimerStarted = db.prepare(`
+  INSERT INTO daily_stats (date, timers_started) VALUES (?, 1)
+  ON CONFLICT (date) DO UPDATE SET timers_started = timers_started + 1
+`)
+
+export const getDailyStats = db.prepare<[number]>(`
+  SELECT date, boards_created, participants_joined, cards_created, timers_started
+  FROM daily_stats
+  ORDER BY date DESC
+  LIMIT ?
+`)
+
+export const getFormatBreakdown = db.prepare(`
+  SELECT format, COUNT(*) as count FROM boards GROUP BY format ORDER BY count DESC
+`)
+
+export const getTotalParticipants = db.prepare(
+  'SELECT COUNT(*) as count FROM participants'
+)
+
+export const getTotalCards = db.prepare(
+  'SELECT COUNT(*) as count FROM cards'
+)
 
 export default db

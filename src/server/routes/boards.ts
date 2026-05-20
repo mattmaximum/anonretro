@@ -3,7 +3,8 @@ import { randomBytes } from 'crypto'
 import { nanoid } from 'nanoid'
 import {
   insertBoard, getBoard, getParticipant, countBoards,
-  getOldestBoards, deleteBoard, joinBoardTx
+  getOldestBoards, deleteBoard, joinBoardTx,
+  recordDailyBoardCreated, recordDailyParticipantJoined,
 } from '../db.js'
 import { IDENTITY_POOL, EVICTION_LIMIT } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
@@ -18,6 +19,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     const now = Math.floor(Date.now() / 1000)
 
     insertBoard.run(id, adminToken, format.id, now, now)
+    recordDailyBoardCreated.run(utcDate())
 
     // Fire-and-forget eviction — runs after 201 returned
     setImmediate(() => runEviction())
@@ -56,12 +58,17 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     }
 
     const { identity } = result
+    recordDailyParticipantJoined.run(utcDate())
     return reply.status(201).send({
       participant_token: token,
       color: identity.color,
       animal: identity.animal,
     })
   })
+}
+
+function utcDate(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 function runEviction() {

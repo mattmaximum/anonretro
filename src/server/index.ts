@@ -6,6 +6,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import boardRoutes from './routes/boards.js'
 import exportRoutes from './routes/export.js'
+import metricsRoutes from './routes/metrics.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
 import db from './db.js'
@@ -50,6 +51,7 @@ await fastify.register(websocket, {
 // Routes
 await fastify.register(boardRoutes)
 await fastify.register(exportRoutes)
+await fastify.register(metricsRoutes)
 await fastify.register(wsRoutes)
 
 // Health check
