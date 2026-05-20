@@ -8,13 +8,14 @@ interface Props {
   revealedIds: Set<string>
   revealSequence: string[]
   myVotes: Set<string>
+  locked: boolean
   onAddCard: (content: string) => void
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
 }
 
-export default function Column({ name, cards, revealedIds, revealSequence, myVotes, onAddCard, onVote, onEdit, onDelete }: Props) {
+export default function Column({ name, cards, revealedIds, revealSequence, myVotes, locked, onAddCard, onVote, onEdit, onDelete }: Props) {
   const [draft, setDraft] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
@@ -36,12 +37,13 @@ export default function Column({ name, cards, revealedIds, revealSequence, myVot
           value={draft}
           onChange={e => setDraft(e.target.value)}
           maxLength={500}
-          placeholder="Write what's on your mind"
-          className="flex-1 bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active transition-colors"
+          disabled={locked}
+          placeholder={locked ? 'Board is locked' : "Write what's on your mind"}
+          className="flex-1 bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         />
         <button
           type="submit"
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || locked}
           className="bg-accent hover:bg-accent-hover text-white text-sm font-medium px-3 py-2 rounded transition-colors disabled:opacity-40"
         >
           +
@@ -62,6 +64,7 @@ export default function Column({ name, cards, revealedIds, revealSequence, myVot
             revealedIds={revealedIds}
             revealIndex={revealSequence.indexOf(card.id)}
             myVotes={myVotes}
+            locked={locked}
             onVote={onVote}
             onEdit={onEdit}
             onDelete={onDelete}

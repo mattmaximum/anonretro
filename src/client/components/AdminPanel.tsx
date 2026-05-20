@@ -5,6 +5,7 @@ import TimerDisplay from './TimerDisplay.js'
 interface Props {
   adminToken: string
   blurEnabled: boolean
+  locked: boolean
   timer: TimerState
   boardId: string
   onSend: (msg: object) => void
@@ -48,6 +49,63 @@ function RevealDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel
   )
 }
 
+function LockExportDialog({ boardId, adminToken, onExportAndLock, onLock, onCancel }: {
+  boardId: string
+  adminToken: string
+  onExportAndLock: () => void
+  onLock: () => void
+  onCancel: () => void
+}) {
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExportAndLock() {
+    setExporting(true)
+    const url = `/api/boards/${boardId}/export.csv`
+    try {
+      const r = await fetch(url, { headers: { 'x-admin-token': adminToken } })
+      const blob = await r.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.setAttribute('download', `retro-${boardId}.csv`)
+      a.click()
+    } finally {
+      onExportAndLock()
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-raised rounded-lg p-6 w-full max-w-sm flex flex-col gap-4">
+        <h3 className="font-semibold text-text-1">Export before locking?</h3>
+        <p className="text-text-2 text-sm">
+          Once locked, no one can add, edit, or vote on cards. Would you like to download a CSV of the board first?
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={handleExportAndLock}
+            disabled={exporting}
+            className="w-full bg-accent hover:bg-accent-hover text-white font-medium py-2 rounded transition-colors text-sm disabled:opacity-50"
+          >
+            {exporting ? 'Exporting…' : 'Export CSV & lock'}
+          </button>
+          <button
+            onClick={onLock}
+            className="w-full border border-border text-text-2 hover:text-text-1 py-2 rounded text-sm transition-colors"
+          >
+            Lock without exporting
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full text-text-3 hover:text-text-2 py-1.5 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
   const m = Math.floor(seconds / 60)
@@ -55,11 +113,12 @@ function formatDuration(seconds: number): string {
   return s === 0 ? `${m}m` : `${m}m ${s}s`
 }
 
-export default function AdminPanel({ adminToken, blurEnabled, timer, boardId, onSend }: Props) {
+export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boardId, onSend }: Props) {
   const [duration, setDuration] = useState(30)  // seconds
   const [label, setLabel] = useState('')
   const [showRevealDialog, setShowRevealDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showLockExportDialog, setShowLockExportDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const timerRunning = timer.expires_at !== null && timer.paused_at === null
@@ -85,9 +144,13 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, boardId, on
 
   function handleRevealConfirm() {
     setShowRevealDialog(false)
-    // Play chime inside click handler (Safari gate)
     playChime()
     onSend({ type: 'admin:reveal', admin_token: adminToken })
+  }
+
+  function handleLock() {
+    setShowLockExportDialog(false)
+    onSend({ type: 'admin:lock_toggle', admin_token: adminToken })
   }
 
   return (
@@ -104,8 +167,40 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, boardId, on
           onCancel={() => setShowRevealDialog(false)}
         />
       )}
+      {showLockExportDialog && (
+        <LockExportDialog
+          boardId={boardId}
+          adminToken={adminToken}
+          onExportAndLock={handleLock}
+          onLock={handleLock}
+          onCancel={() => setShowLockExportDialog(false)}
+        />
+      )}
 
       <div className="flex flex-col gap-4">
+        {/* Lock board */}
+        <div className="flex flex-col gap-2">
+          <p className="text-text-2 text-xs font-medium uppercase tracking-wide">Board</p>
+          {locked ? (
+            <button
+              onClick={() => onSend({ type: 'admin:lock_toggle', admin_token: adminToken })}
+              className="w-full border border-border hover:border-border-active text-text-2 hover:text-text-1 py-2 rounded text-sm transition-colors"
+            >
+              Unlock board
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowLockExportDialog(true)}
+              className="w-full bg-warning/20 hover:bg-warning/30 text-warning font-medium py-2 rounded text-sm transition-colors"
+            >
+              Lock board
+            </button>
+          )}
+          {locked && (
+            <p className="text-text-3 text-[11px] text-center">Board is locked — no changes allowed</p>
+          )}
+        </div>
+
         {/* Blur toggle / Reveal */}
         <div className="flex flex-col gap-2">
           <p className="text-text-2 text-xs font-medium uppercase tracking-wide">Cards</p>
@@ -192,10 +287,9 @@ export default function AdminPanel({ adminToken, blurEnabled, timer, boardId, on
         {/* Export */}
         <div className="border-t border-border pt-3">
           <a
-            href={`/api/boards/${window.location.pathname.split('/').pop()}/export.csv`}
+            href={`/api/boards/${boardId}/export.csv`}
             download
             onClick={e => {
-              const boardId = window.location.pathname.split('/').pop()
               const url = `/api/boards/${boardId}/export.csv`
               e.preventDefault()
               const a = document.createElement('a')

@@ -64,6 +64,7 @@ db.exec(`
 
 // Migrations for columns added after initial schema
 try { db.exec("ALTER TABLE boards ADD COLUMN title TEXT NOT NULL DEFAULT ''") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE boards ADD COLUMN locked INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -81,6 +82,10 @@ export const updateBoardActivity = db.prepare<[number, string]>(
 
 export const updateBoardBlur = db.prepare<[number, string]>(
   'UPDATE boards SET blur_enabled = ? WHERE id = ?'
+)
+
+export const updateBoardLock = db.prepare<[number, string]>(
+  'UPDATE boards SET locked = ? WHERE id = ?'
 )
 
 export const updateTimerStart = db.prepare<[number, string, string]>(

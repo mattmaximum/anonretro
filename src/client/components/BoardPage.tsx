@@ -20,6 +20,7 @@ export default function BoardPage() {
   const [cards, setCards] = useState<CardData[]>([])
   const [participants, setParticipants] = useState<ParticipantData[]>([])
   const [blurEnabled, setBlurEnabled] = useState(true)
+  const [boardLocked, setBoardLocked] = useState(false)
   const [timer, setTimer] = useState<TimerState>({ expires_at: null, paused_at: null, label: null })
   const [format, setFormat] = useState('mad-sad-glad')
   const [boardTitle, setBoardTitle] = useState('')
@@ -83,6 +84,7 @@ export default function BoardPage() {
     switch (msg.type) {
       case 'board_state':
         setBlurEnabled(msg.blur_enabled)
+        setBoardLocked(msg.locked)
         setCards(msg.cards)
         setParticipants(msg.participants)
         setTimer(msg.timer)
@@ -138,6 +140,10 @@ export default function BoardPage() {
       case 'timer:cancelled':
       case 'timer:expired':
         setTimer({ expires_at: null, paused_at: null, label: null })
+        break
+
+      case 'board_locked':
+        setBoardLocked(msg.locked)
         break
 
       case 'board_deleted':
@@ -307,6 +313,7 @@ export default function BoardPage() {
                 revealedIds={revealedIds}
                 revealSequence={revealSequence}
                 myVotes={myVotes}
+                locked={boardLocked}
                 onAddCard={content => send({ type: 'card:add', column_id: col, content })}
                 onVote={cardId => {
                   setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
@@ -350,6 +357,7 @@ export default function BoardPage() {
               revealedIds={revealedIds}
               revealSequence={revealSequence}
               myVotes={myVotes}
+              locked={boardLocked}
               onAddCard={content => send({ type: 'card:add', column_id: fmt.columns[activeTab], content })}
               onVote={cardId => {
                 setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
@@ -361,13 +369,14 @@ export default function BoardPage() {
           </div>
         </main>
 
-        {/* Admin panel — desktop sidebar */}
+        {/* Facilitator Controls — desktop sidebar */}
         {isAdmin && adminToken && (
           <aside className="hidden md:flex flex-col w-56 border-l border-border bg-raised p-4 flex-shrink-0">
-            <p className="text-text-2 text-xs font-semibold uppercase tracking-wide mb-3">Admin</p>
+            <p className="text-text-2 text-xs font-semibold uppercase tracking-wide mb-3">Facilitator Controls</p>
             <AdminPanel
               adminToken={adminToken}
               blurEnabled={blurEnabled}
+              locked={boardLocked}
               timer={timer}
               boardId={boardId!}
               onSend={send}
@@ -376,9 +385,9 @@ export default function BoardPage() {
         )}
       </div>
 
-      {/* Admin FAB — mobile */}
+      {/* Facilitator Controls FAB — mobile */}
       {isAdmin && adminToken && (
-        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} boardId={boardId!} onSend={send} />
+        <MobileAdminFAB adminToken={adminToken} blurEnabled={blurEnabled} locked={boardLocked} timer={timer} boardId={boardId!} onSend={send} />
       )}
     </div>
   )
@@ -413,8 +422,8 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
 
 // ── Mobile Admin FAB + Bottom Sheet ──────────────────────────────────────────
 
-function MobileAdminFAB({ adminToken, blurEnabled, timer, boardId, onSend }: {
-  adminToken: string; blurEnabled: boolean; timer: TimerState; boardId: string; onSend: (msg: object) => void
+function MobileAdminFAB({ adminToken, blurEnabled, locked, timer, boardId, onSend }: {
+  adminToken: string; blurEnabled: boolean; locked: boolean; timer: TimerState; boardId: string; onSend: (msg: object) => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -435,10 +444,10 @@ function MobileAdminFAB({ adminToken, blurEnabled, timer, boardId, onSend }: {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <p className="font-semibold text-text-1">Admin controls</p>
+              <p className="font-semibold text-text-1">Facilitator Controls</p>
               <button onClick={() => setOpen(false)} className="text-text-3 hover:text-text-2">✕</button>
             </div>
-            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} timer={timer} boardId={boardId} onSend={onSend} />
+            <AdminPanel adminToken={adminToken} blurEnabled={blurEnabled} locked={locked} timer={timer} boardId={boardId} onSend={onSend} />
           </div>
         </div>
       )}

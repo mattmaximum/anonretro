@@ -5,6 +5,7 @@ interface Props {
   card: CardData
   revealedIds: Set<string>
   revealIndex: number
+  locked: boolean
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
@@ -12,7 +13,7 @@ interface Props {
 }
 
 
-export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, onDelete, myVotes }: Props) {
+export default function Card({ card, revealedIds, revealIndex, locked, onVote, onEdit, onDelete, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.content)
   const isRevealing = revealedIds.has(card.id)
@@ -65,7 +66,7 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
 
         <div className="flex items-center gap-2">
           {/* Edit / delete (own cards only, not while revealing) */}
-          {card.is_own && !editing && !revealedIds.size && (
+          {card.is_own && !editing && !revealedIds.size && !locked && (
             <div className="hidden group-hover:flex items-center gap-1">
               <button
                 onClick={() => { setDraft(card.content); setEditing(true) }}
@@ -86,8 +87,9 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
 
           {/* Vote button */}
           <button
-            onClick={() => onVote(card.id)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+            onClick={() => !locked && onVote(card.id)}
+            disabled={locked}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
               voted
                 ? 'bg-accent-muted text-accent'
                 : 'bg-transparent text-text-3 hover:text-text-2'

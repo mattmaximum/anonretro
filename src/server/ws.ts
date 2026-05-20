@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   getBoard, getCards, getCard, getParticipant, getParticipants,
   insertCard, updateCard, deleteCard, voteToggleTx,
-  updateBoardBlur, updateBoardActivity, updateTimerStart,
+  updateBoardBlur, updateBoardLock, updateBoardActivity, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
 } from './db.js'
@@ -217,6 +217,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
     send(ws, {
       type: 'board_state',
       blur_enabled: boardRow.blur_enabled === 1,
+      locked: boardRow.locked === 1,
       cards,
       participants: [...iMap.values()].map(p => ({ color: p.color, animal: p.animal })),
       timer: { expires_at: boardRow.timer_expires_at, paused_at: boardRow.timer_paused_at, label: boardRow.timer_label },
@@ -249,6 +250,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
 
       switch (msg.type) {
         case 'card:add': {
+          if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           if (!checkRateLimit(token)) { send(ws, { type: 'error', code: 'RATE_LIMITED' }); return }
           const fmt = getFormat(board.format)
           if (!fmt.columns.includes(msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
@@ -263,6 +265,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
         }
 
         case 'card:edit': {
+          if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           const card = getCard.get(msg.id) as any
           if (!card || card.board_id !== boardId) return
           if (card.creator_token !== token) { send(ws, { type: 'error', code: 'NOT_OWNER' }); return }
@@ -275,6 +278,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
         }
 
         case 'card:delete': {
+          if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           const card = getCard.get(msg.id) as any
           if (!card || card.board_id !== boardId) return
           if (card.creator_token !== token) { send(ws, { type: 'error', code: 'NOT_OWNER' }); return }
@@ -285,6 +289,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
         }
 
         case 'vote:toggle': {
+          if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           const card = getCard.get(msg.card_id) as any
           if (!card || card.board_id !== boardId) return
           const { count } = voteToggleTx(msg.card_id, token)
@@ -320,6 +325,14 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           broadcast(boardId, { type: 'reveal', sequence: allCards.map((c: any) => c.id) })
           const revMap = buildIdentityMap(boardId)
           broadcastAllCardsToEach(boardId, allCards, revMap, false)
+          break
+        }
+
+        case 'admin:lock_toggle': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const newLocked = board.locked === 1 ? 0 : 1
+          updateBoardLock.run(newLocked, boardId)
+          broadcast(boardId, { type: 'board_locked', locked: newLocked === 1 })
           break
         }
 
