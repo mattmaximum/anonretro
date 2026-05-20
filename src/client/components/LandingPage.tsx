@@ -1,0 +1,100 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { FORMATS } from '@shared/formats'
+import { storage } from '../lib/storage.js'
+
+export default function LandingPage() {
+  const navigate = useNavigate()
+  const [format, setFormat] = useState(FORMATS[0].id)
+  const [joinId, setJoinId] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleCreate() {
+    setCreating(true)
+    setError('')
+    try {
+      const res = await fetch('/api/boards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format }),
+      })
+      if (!res.ok) throw new Error('Failed to create board')
+      const data = await res.json()
+      storage.setAdminToken(data.id, data.admin_token)
+      navigate(`/b/${data.id}?new=1`)
+    } catch {
+      setError('Something went wrong. Try again.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    const id = joinId.trim().split('/').pop() ?? joinId.trim()
+    if (!id) return
+    navigate(`/b/${id}`)
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-12">
+      <div className="text-center">
+        <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
+        <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. No anchoring.</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
+        {/* Create */}
+        <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
+          <h2 className="font-semibold text-text-1">New board</h2>
+          <div className="flex flex-col gap-2">
+            {FORMATS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFormat(f.id)}
+                className={`px-3 py-2 rounded text-sm text-left transition-colors ${
+                  format === f.id
+                    ? 'bg-accent-muted text-accent font-medium'
+                    : 'text-text-2 hover:bg-raised hover:text-text-1'
+                }`}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-danger text-sm">{error}</p>}
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50"
+          >
+            {creating ? 'Creating…' : 'Create board'}
+          </button>
+        </div>
+
+        {/* Join */}
+        <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
+          <h2 className="font-semibold text-text-1">Join a board</h2>
+          <form onSubmit={handleJoin} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={joinId}
+              onChange={e => setJoinId(e.target.value)}
+              placeholder="Paste board link or ID"
+              className="bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active"
+            />
+            <button
+              type="submit"
+              disabled={!joinId.trim() || joining}
+              className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50"
+            >
+              Join board
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
