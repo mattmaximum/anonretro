@@ -4,16 +4,13 @@ export const BOARD_EXPIRY_SECONDS = 86400
 export const EVICTION_LIMIT = 5000
 
 export const COLORS = [
-  { name: 'Teal',    hex: '#0D9488' },
-  { name: 'Indigo',  hex: '#6366F1' },
-  { name: 'Rose',    hex: '#F43F5E' },
-  { name: 'Amber',   hex: '#F59E0B' },
-  { name: 'Emerald', hex: '#10B981' },
-  { name: 'Violet',  hex: '#8B5CF6' },
-  { name: 'Sky',     hex: '#0EA5E9' },
-  { name: 'Orange',  hex: '#F97316' },
-  { name: 'Pink',    hex: '#EC4899' },
-  { name: 'Lime',    hex: '#84CC16' },
+  { name: 'Red',    hex: '#EF4444' },
+  { name: 'Orange', hex: '#F97316' },
+  { name: 'Yellow', hex: '#EAB308' },
+  { name: 'Green',  hex: '#22C55E' },
+  { name: 'Blue',   hex: '#3B82F6' },
+  { name: 'Indigo', hex: '#6366F1' },
+  { name: 'Violet', hex: '#8B5CF6' },
 ]
 
 export const ANIMALS = [

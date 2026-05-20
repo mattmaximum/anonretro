@@ -13,14 +13,11 @@ export function avatarTextColor(hex: string): string {
 
 // Map color name → hex for avatar backgrounds
 export const COLOR_HEX: Record<string, string> = {
-  Teal:    '#0D9488',
-  Indigo:  '#6366F1',
-  Rose:    '#F43F5E',
-  Amber:   '#F59E0B',
-  Emerald: '#10B981',
-  Violet:  '#8B5CF6',
-  Sky:     '#0EA5E9',
-  Orange:  '#F97316',
-  Pink:    '#EC4899',
-  Lime:    '#84CC16',
+  Red:    '#EF4444',
+  Orange: '#F97316',
+  Yellow: '#EAB308',
+  Green:  '#22C55E',
+  Blue:   '#3B82F6',
+  Indigo: '#6366F1',
+  Violet: '#8B5CF6',
 }
