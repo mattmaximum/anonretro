@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TimerState } from '@shared/messages'
 
 interface Props {
@@ -13,6 +13,16 @@ function formatTime(seconds: number): string {
 
 export default function TimerDisplay({ timer }: Props) {
   const [remaining, setRemaining] = useState<number | null>(null)
+  const wasExpiredRef = useRef(false)
+
+  // Play chime exactly once when the countdown crosses zero
+  useEffect(() => {
+    const expired = remaining !== null && remaining <= 0
+    if (expired && !wasExpiredRef.current) {
+      playTimerChime()
+    }
+    wasExpiredRef.current = expired
+  }, [remaining])
 
   useEffect(() => {
     if (!timer.expires_at) { setRemaining(null); return }
@@ -30,6 +40,11 @@ export default function TimerDisplay({ timer }: Props) {
     const id = setInterval(tick, 250)
     return () => clearInterval(id)
   }, [timer.expires_at, timer.paused_at])
+
+  // Reset expired tracking when a new timer starts
+  useEffect(() => {
+    if (timer.expires_at === null) wasExpiredRef.current = false
+  }, [timer.expires_at])
 
   if (remaining === null) return null
 
@@ -52,4 +67,25 @@ export default function TimerDisplay({ timer }: Props) {
       </p>
     </div>
   )
+}
+
+function playTimerChime() {
+  try {
+    const ctx = new AudioContext()
+    const notes = [523, 392] // C5 → G4 — descending two-tone
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const start = ctx.currentTime + i * 0.22
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35)
+      osc.start(start)
+      osc.stop(start + 0.4)
+    })
+  } catch { /* AudioContext blocked — silent fallback */ }
 }
