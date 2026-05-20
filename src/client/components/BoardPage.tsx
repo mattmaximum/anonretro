@@ -8,6 +8,7 @@ import Column from './Column.js'
 import PresenceBar from './PresenceBar.js'
 import AdminPanel from './AdminPanel.js'
 import ShareModal from './ShareModal.js'
+import TimerDisplay from './TimerDisplay.js'
 
 type WsStatus = 'connecting' | 'connected' | 'reconnecting' | 'dead'
 
@@ -247,6 +248,14 @@ export default function BoardPage() {
         {/* Retention box */}
         <RetentionBox createdAt={boardCreatedAt} />
       </header>
+
+      {/* Timer banner — visible to all participants */}
+      {timer.expires_at !== null && (
+        <div className="border-b border-border bg-raised px-4 py-2.5 flex items-center justify-center gap-4">
+          {timer.label && <span className="text-text-2 text-sm font-medium">{timer.label}</span>}
+          <TimerDisplay timer={timer} />
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Columns — desktop */}

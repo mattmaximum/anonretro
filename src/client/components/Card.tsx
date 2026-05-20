@@ -37,7 +37,7 @@ export default function Card({ card, revealedIds, revealIndex, onVote, onEdit, o
       role="article"
     >
       {card.blur ? (
-        <p className="text-sm text-text-3 leading-relaxed select-none" aria-label="Hidden card">
+        <p className="text-sm text-text-1 italic leading-relaxed select-none" aria-label="Hidden card">
           {card.content}
         </p>
       ) : editing ? (
