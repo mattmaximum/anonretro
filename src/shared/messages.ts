@@ -10,7 +10,7 @@ export const InboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('admin:blur_toggle'),   admin_token: z.string() }),
   z.object({ type: z.literal('admin:reveal'),        admin_token: z.string() }),
   z.object({ type: z.literal('admin:lock_toggle'),   admin_token: z.string() }),
-  z.object({ type: z.literal('admin:timer_start'),   admin_token: z.string(), duration_seconds: z.number().int().min(1).max(3600), label: z.string().max(80) }),
+  z.object({ type: z.literal('admin:timer_start'),   admin_token: z.string(), duration_seconds: z.number().int().min(1).max(1800), label: z.string().max(80) }),
   z.object({ type: z.literal('admin:timer_pause'),   admin_token: z.string() }),
   z.object({ type: z.literal('admin:timer_resume'),  admin_token: z.string() }),
   z.object({ type: z.literal('admin:timer_cancel'),  admin_token: z.string() }),

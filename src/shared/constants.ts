@@ -9,8 +9,8 @@ export const COLORS = [
   { name: 'Yellow', hex: '#EAB308' },
   { name: 'Green',  hex: '#22C55E' },
   { name: 'Blue',   hex: '#3B82F6' },
-  { name: 'Indigo', hex: '#6366F1' },
-  { name: 'Violet', hex: '#8B5CF6' },
+  { name: 'Purple', hex: '#A855F7' },
+  { name: 'Pink',   hex: '#EC4899' },
 ]
 
 export const ANIMALS = [

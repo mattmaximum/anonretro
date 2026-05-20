@@ -18,6 +18,6 @@ export const COLOR_HEX: Record<string, string> = {
   Yellow: '#EAB308',
   Green:  '#22C55E',
   Blue:   '#3B82F6',
-  Indigo: '#6366F1',
-  Violet: '#8B5CF6',
+  Purple: '#A855F7',
+  Pink:   '#EC4899',
 }

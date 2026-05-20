@@ -415,13 +415,12 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }
       const dLeft = Math.floor(msLeft / 86_400_000)
-      const hLeft = Math.floor(msLeft / 3_600_000)
-      if (dLeft >= 2) setLabel(`Expires in ${dLeft}d`)
-      else if (hLeft >= 2) setLabel(`Expires in ${hLeft}h`)
-      else {
-        const mLeft = Math.floor(msLeft / 60_000)
-        setLabel(`Expires in ${mLeft}m`)
-      }
+      const hLeft = Math.floor((msLeft % 86_400_000) / 3_600_000)
+      const hTotal = Math.floor(msLeft / 3_600_000)
+      const mLeft = Math.floor(msLeft / 60_000)
+      if (dLeft >= 1) setLabel(`Expires in ${dLeft}d ${hLeft}h`)
+      else if (hTotal >= 1) setLabel(`Expires in ${hTotal}h`)
+      else setLabel(`Expires in ${mLeft}m`)
     }
     update()
     const id = setInterval(update, 60_000)

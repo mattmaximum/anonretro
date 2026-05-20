@@ -116,7 +116,7 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
           <span>⬆</span> Share / QR Code
         </button>
 
-        {/* Lock board */}
+        {/* Board — lock + reveal */}
         <div className="flex flex-col gap-2">
           <p className="text-text-2 text-xs font-medium uppercase tracking-wide">Board</p>
           <button
@@ -128,11 +128,6 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
           >
             {locked ? 'Unlock board' : 'Lock board'}
           </button>
-        </div>
-
-        {/* Blur toggle / Reveal */}
-        <div className="flex flex-col gap-2">
-          <p className="text-text-2 text-xs font-medium uppercase tracking-wide">Cards</p>
           {blurEnabled ? (
             <button
               onClick={() => setShowRevealDialog(true)}
@@ -164,7 +159,7 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
               <input
                 type="range"
                 min={30}
-                max={3600}
+                max={1800}
                 step={30}
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}

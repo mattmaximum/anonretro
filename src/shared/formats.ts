@@ -8,7 +8,7 @@ export const FORMATS: RetroFormat[] = [
   { id: 'mad-sad-glad',       name: 'Mad / Sad / Glad',       columns: ['Mad', 'Sad', 'Glad'] },
   { id: '4ls',                name: '4Ls',                    columns: ['Liked', 'Learned', 'Lacked', 'Longed For'] },
   { id: 'start-stop-continue',name: 'Start / Stop / Continue',columns: ['Start', 'Stop', 'Continue'] },
-  { id: 'well-unwell-actions', name: 'Well / Unwell / Actions', columns: ['Went Well', "Didn't Go Well", 'Action Items'] },
+  { id: 'well-unwell-actions', name: 'Well / Unwell / Actions', columns: ['What went well', "What didn't go well", 'Action items'] },
 ]
 
 export const DEFAULT_FORMAT = FORMATS[0]
