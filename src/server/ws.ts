@@ -260,7 +260,6 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           insertCard.run(id, boardId, token, msg.column_id, content, ts, ts)
           recordDailyCardCreated.run(utcDate())
-          updateBoardActivity.run(ts, boardId)
           broadcastCardUpdate(boardId, { id, board_id: boardId, creator_token: token, column_id: msg.column_id, content, votes: 0, created_at: ts, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
           break
         }
@@ -273,7 +272,6 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           updateCard.run(content, ts, msg.id)
-          updateBoardActivity.run(ts, boardId)
           broadcastCardUpdate(boardId, { ...card, content, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
           break
         }
@@ -284,7 +282,6 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!card || card.board_id !== boardId) return
           if (card.creator_token !== token) { send(ws, { type: 'error', code: 'NOT_OWNER' }); return }
           deleteCard.run(msg.id)
-          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'card_deleted', id: msg.id })
           break
         }
