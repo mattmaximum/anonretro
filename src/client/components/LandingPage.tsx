@@ -43,14 +43,17 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-12">
       <div className="text-center">
-        <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
+        <div className="flex items-center justify-center gap-2.5">
+          <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
+          <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
+        </div>
         <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. Free to use.</p>
       </div>
 
       {/* Create a new board */}
       <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-6 py-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-text-1 flex-shrink-0">Create a new board</h2>
+          <h2 className="font-semibold text-text-1 flex-shrink-0">Create a board</h2>
           <input
             type="text"
             value={title}
