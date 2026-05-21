@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   getBoard, getCards, getCard, getParticipant, getParticipants,
   insertCard, updateCard, deleteCard, voteToggleTx,
-  updateBoardBlur, updateBoardLock, updateBoardActivity, updateTimerStart,
+  updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
 } from './db.js'
@@ -260,6 +260,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           insertCard.run(id, boardId, token, msg.column_id, content, ts, ts)
           recordDailyCardCreated.run(utcDate())
+          updateBoardWrite.run(ts, boardId)
           broadcastCardUpdate(boardId, { id, board_id: boardId, creator_token: token, column_id: msg.column_id, content, votes: 0, created_at: ts, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
           break
         }
@@ -272,6 +273,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           updateCard.run(content, ts, msg.id)
+          updateBoardWrite.run(ts, boardId)
           broadcastCardUpdate(boardId, { ...card, content, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
           break
         }
@@ -282,6 +284,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!card || card.board_id !== boardId) return
           if (card.creator_token !== token) { send(ws, { type: 'error', code: 'NOT_OWNER' }); return }
           deleteCard.run(msg.id)
+          updateBoardWrite.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'card_deleted', id: msg.id })
           break
         }
@@ -291,6 +294,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const card = getCard.get(msg.card_id) as any
           if (!card || card.board_id !== boardId) return
           const { count } = voteToggleTx(msg.card_id, token)
+          updateBoardWrite.run(Math.floor(Date.now() / 1000), boardId)
           const ownerMap = buildIdentityMap(boardId)
           const ownerOf = ownerMap.get(card.creator_token)
           broadcastCardUpdate(boardId, { ...card, votes: count, _color: ownerOf?.color, _animal: ownerOf?.animal }, board.blur_enabled === 1)

@@ -65,6 +65,7 @@ db.exec(`
 // Migrations for columns added after initial schema
 try { db.exec("ALTER TABLE boards ADD COLUMN title TEXT NOT NULL DEFAULT ''") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN locked INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE boards ADD COLUMN last_write_at INTEGER") } catch { /* already exists */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -78,6 +79,10 @@ export const insertBoard = db.prepare(
 
 export const updateBoardActivity = db.prepare<[number, string]>(
   'UPDATE boards SET last_activity_at = ? WHERE id = ?'
+)
+
+export const updateBoardWrite = db.prepare<[number, string]>(
+  'UPDATE boards SET last_write_at = ? WHERE id = ?'
 )
 
 export const updateBoardBlur = db.prepare<[number, string]>(
@@ -185,6 +190,10 @@ export const countBoards = db.prepare(
 
 export const countActiveBoards = db.prepare<[number]>(
   'SELECT COUNT(*) as count FROM boards WHERE last_activity_at >= ?'
+)
+
+export const countHotBoards = db.prepare<[number]>(
+  'SELECT COUNT(*) as count FROM boards WHERE last_write_at >= ?'
 )
 
 export const deleteExpiredBoards = db.transaction((cutoff: number) => {

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
 import db, {
   DB_PATH, getDailyStats, getFormatBreakdown,
-  getTotalParticipants, getTotalCards, countBoards, countActiveBoards,
+  getTotalParticipants, getTotalCards, countBoards, countActiveBoards, countHotBoards,
 } from '../db.js'
 import { getConnectedCount } from '../ws.js'
 
@@ -42,6 +42,7 @@ function uptimeStr(): string {
 function renderPage(data: {
   activeBoardCount: number
   totalBoardCount: number
+  hotBoardCount: number
   connectedNow: number
   totalParticipants: number
   totalCards: number
@@ -119,6 +120,7 @@ function renderPage(data: {
   <div>
     <p class="section-title">Live</p>
     <div class="stat-grid">
+      <div class="stat-card"><div class="val">${data.hotBoardCount}</div><div class="lbl">Hot boards (15m)</div></div>
       <div class="stat-card"><div class="val">${data.activeBoardCount}</div><div class="lbl">Active boards (7d)</div></div>
       <div class="stat-card"><div class="val">${data.totalBoardCount}</div><div class="lbl">Total boards (DB)</div></div>
       <div class="stat-card"><div class="val">${data.connectedNow}</div><div class="lbl">Connected now</div></div>
@@ -181,8 +183,9 @@ export default async function metricsRoutes(fastify: FastifyInstance) {
       return reply.code(401).type('text/plain').send('Unauthorized')
     }
 
-    const cutoff = Math.floor(Date.now() / 1000) - 604800
-    const { count: activeBoardCount } = countActiveBoards.get(cutoff) as { count: number }
+    const now = Math.floor(Date.now() / 1000)
+    const { count: hotBoardCount } = countHotBoards.get(now - 900) as { count: number }
+    const { count: activeBoardCount } = countActiveBoards.get(now - 604800) as { count: number }
     const { count: totalBoardCount } = countBoards.get() as { count: number }
     const { count: totalParticipants } = getTotalParticipants.get() as { count: number }
     const { count: totalCards } = getTotalCards.get() as { count: number }
@@ -192,6 +195,7 @@ export default async function metricsRoutes(fastify: FastifyInstance) {
     }>
 
     const html = renderPage({
+      hotBoardCount,
       activeBoardCount,
       totalBoardCount,
       connectedNow: getConnectedCount(),
