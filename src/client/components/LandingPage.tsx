@@ -50,31 +50,22 @@ export default function LandingPage() {
       {/* Create a new board */}
       <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 flex flex-col gap-5">
         <h2 className="font-semibold text-text-1">Create a new board</h2>
-        <div className="flex gap-6">
-          {/* Left: title input */}
-          <div className="flex-1 flex flex-col gap-3">
-            <input
-              type="text"
-              value={title}
-              onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
-              maxLength={100}
-              placeholder="Board title (e.g. Sprint 42 Retro) *"
-              className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
-            />
-            {error && <p className="text-danger text-sm">{error}</p>}
-          </div>
-
-          {/* Subtle vertical divider */}
-          <div className="w-px bg-border self-stretch" />
-
-          {/* Right: format selector */}
-          <div className="flex-1 flex flex-col gap-2">
-            <p className="text-text-3 text-xs font-medium uppercase tracking-wide">Select your board format</p>
+        <div className="flex flex-col gap-3">
+          <input
+            type="text"
+            value={title}
+            onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
+            maxLength={100}
+            placeholder="Board title (e.g. Sprint 42 Retro) *"
+            className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
+          />
+          {error && <p className="text-danger text-sm">{error}</p>}
+          <div className="flex flex-wrap gap-2">
             {FORMATS.map(f => (
               <button
                 key={f.id}
                 onClick={() => setFormat(f.id)}
-                className={`px-3 py-2 rounded text-sm text-left transition-colors ${
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
                   format === f.id
                     ? 'bg-accent-muted text-accent font-medium'
                     : 'text-text-2 hover:bg-raised hover:text-text-1'
