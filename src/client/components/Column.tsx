@@ -9,13 +9,15 @@ interface Props {
   revealSequence: string[]
   myVotes: Set<string>
   locked: boolean
+  expandedCardId: string | null
+  onExpandCard: (id: string | null) => void
   onAddCard: (content: string) => void
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
 }
 
-export default function Column({ name, cards, revealedIds, revealSequence, myVotes, locked, onAddCard, onVote, onEdit, onDelete }: Props) {
+export default function Column({ name, cards, revealedIds, revealSequence, myVotes, locked, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete }: Props) {
   const [draft, setDraft] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
@@ -65,6 +67,9 @@ export default function Column({ name, cards, revealedIds, revealSequence, myVot
             revealIndex={revealSequence.indexOf(card.id)}
             myVotes={myVotes}
             locked={locked}
+            isExpanded={expandedCardId === card.id}
+            onExpand={() => onExpandCard(card.id)}
+            onCollapse={() => onExpandCard(null)}
             onVote={onVote}
             onEdit={onEdit}
             onDelete={onDelete}

@@ -27,6 +27,7 @@ export default function BoardPage() {
   const [boardCreatedAt, setBoardCreatedAt] = useState<number | null>(null)
   const [boardLastActivityAt, setBoardLastActivityAt] = useState<number | null>(null)
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set())
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
   const [revealSequence, setRevealSequence] = useState<string[]>([])
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting')
@@ -327,6 +328,8 @@ export default function BoardPage() {
                 revealSequence={revealSequence}
                 myVotes={myVotes}
                 locked={boardLocked}
+                expandedCardId={expandedCardId}
+                onExpandCard={setExpandedCardId}
                 onAddCard={content => send({ type: 'card:add', column_id: col, content })}
                 onVote={cardId => {
                   setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
@@ -371,6 +374,8 @@ export default function BoardPage() {
               revealSequence={revealSequence}
               myVotes={myVotes}
               locked={boardLocked}
+              expandedCardId={expandedCardId}
+              onExpandCard={setExpandedCardId}
               onAddCard={content => send({ type: 'card:add', column_id: fmt.columns[activeTab], content })}
               onVote={cardId => {
                 setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })

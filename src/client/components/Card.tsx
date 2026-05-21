@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import type { CardData } from '@shared/messages'
 
 interface Props {
@@ -6,6 +6,9 @@ interface Props {
   revealedIds: Set<string>
   revealIndex: number
   locked: boolean
+  isExpanded: boolean
+  onExpand: () => void
+  onCollapse: () => void
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
@@ -13,9 +16,24 @@ interface Props {
 }
 
 
-export default function Card({ card, revealedIds, revealIndex, locked, onVote, onEdit, onDelete, myVotes }: Props) {
+export default function Card({ card, revealedIds, revealIndex, locked, isExpanded, onExpand, onCollapse, onVote, onEdit, onDelete, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.content)
+  const contentRef = useRef<HTMLParagraphElement>(null)
+  const [isClamped, setIsClamped] = useState(false)
+
+  // Detect whether the content actually overflows 5 lines (only meaningful when collapsed)
+  useLayoutEffect(() => {
+    if (isExpanded) return
+    const el = contentRef.current
+    if (!el) return
+    setIsClamped(el.scrollHeight > el.clientHeight)
+  }, [card.content, isExpanded])
+
+  // Auto-collapse when card becomes blurred (facilitator hid cards)
+  useEffect(() => {
+    if (card.blur) onCollapse()
+  }, [card.blur])
   const isRevealing = revealedIds.has(card.id)
   const voted = myVotes.has(card.id)
 
@@ -55,7 +73,22 @@ export default function Card({ card, revealedIds, revealIndex, locked, onVote, o
           </div>
         </form>
       ) : (
-        <p className="text-sm text-text-1 leading-relaxed whitespace-pre-wrap">{card.content}</p>
+        <>
+          <p
+            ref={contentRef}
+            className={`text-sm text-text-1 leading-relaxed whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-5'}`}
+          >
+            {card.content}
+          </p>
+          {isClamped && (
+            <button
+              onClick={isExpanded ? onCollapse : onExpand}
+              className="text-accent text-xs hover:underline self-start"
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </>
       )}
 
       <div className="flex items-center justify-between">
