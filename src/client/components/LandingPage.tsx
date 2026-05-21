@@ -107,16 +107,8 @@ export default function LandingPage() {
         </form>
       </div>
 
-      {/* Support section */}
-      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 flex flex-col gap-3">
-        <h2 className="font-semibold text-text-1 text-sm">Keep AnonRetro Free &amp; Frictionless</h2>
-        <p className="text-text-2 text-sm leading-relaxed">
-          AnonRetro is built to be the fastest way to run a team retrospective—no accounts, no tracking, and no paywalls.
-          To keep it that way, I rely on the community to help cover the server hosting and development time.
-        </p>
-      </div>
-
-      <p className="text-text-3 text-xs">
+      <p className="text-text-3 text-xs flex gap-4">
+        <Link to="/about" className="hover:text-text-2 transition-colors">About</Link>
         <Link to="/privacy" className="hover:text-text-2 transition-colors">Privacy Policy</Link>
       </p>
     </div>
