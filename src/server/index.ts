@@ -65,7 +65,6 @@ if (IS_PROD) {
   await fastify.register(fastifyStatic, {
     root: path.join(__dirname, '../../public'),
     prefix: '/',
-    decorateReply: false,
   })
   fastify.setNotFoundHandler((_req, reply) => reply.sendFile('index.html'))
 }
