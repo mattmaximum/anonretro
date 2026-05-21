@@ -43,17 +43,21 @@ export default async function boardRoutes(fastify: FastifyInstance) {
       return reply.status(410).send({ error: 'Board has expired.' })
     }
 
-    // Re-use existing token if provided (re-join)
-    const existingToken = body?.participant_token
-    if (existingToken) {
-      const existing = getParticipant.get(id, existingToken)
+    // Accept client-provided token (re-join or idempotent first-join).
+    // Validates format to a 32-char hex string so arbitrary strings can't be injected.
+    const rawToken = body?.participant_token
+    const clientToken = typeof rawToken === 'string' && /^[0-9a-f]{32}$/.test(rawToken) ? rawToken : null
+
+    if (clientToken) {
+      const existing = getParticipant.get(id, clientToken)
       if (existing) {
         const p = existing as { color: string; animal: string }
-        return reply.send({ participant_token: existingToken, color: p.color, animal: p.animal })
+        return reply.send({ participant_token: clientToken, color: p.color, animal: p.animal })
       }
     }
 
-    const token = randomBytes(16).toString('hex')
+    // Use the client token for the new participant too (prevents duplicate on double-request)
+    const token = clientToken ?? randomBytes(16).toString('hex')
     const result = joinBoardTx(id, token, IDENTITY_POOL, now)
 
     if ('error' in result) {

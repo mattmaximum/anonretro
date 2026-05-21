@@ -62,18 +62,23 @@ export default function BoardPage() {
       return
     }
 
-    fetch(`/api/boards/${boardId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    // Generate and persist the token BEFORE fetching so React StrictMode's
+    // double-invoke finds it in storage on the second run and returns early,
+    // preventing two participants from being created for the same client.
+    const newToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0')).join('')
+    storage.setToken(boardId, newToken)
+
+    fetch(`/api/boards/${boardId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participant_token: newToken }) })
       .then(r => r.json())
       .then(data => {
-        if (data.error) { setExpiredCode(404); return }
-        storage.setToken(boardId, data.participant_token)
+        if (data.error) { storage.removeToken(boardId); setExpiredCode(404); return }
         storage.setIdentity(boardId, { color: data.color, animal: data.animal })
-        setToken(data.participant_token)
+        setToken(newToken)
         setIdentity({ color: data.color, animal: data.animal })
-        // Show onboarding banner on first join
         if (!storage.getOnboardingSeen(boardId)) setShowOnboarding(true)
       })
-      .catch(() => setExpiredCode(500))
+      .catch(() => { storage.removeToken(boardId); setExpiredCode(500) })
   }, [boardId])
 
   // ── WS message handler ───────────────────────────────────────────────────────

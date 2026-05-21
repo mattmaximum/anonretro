@@ -11,6 +11,7 @@ export const storage = {
   },
   setIdentity: (boardId: string, identity: { color: string; animal: string }) =>
     localStorage.setItem(key(boardId, 'identity'), JSON.stringify(identity)),
+  removeToken: (boardId: string) => localStorage.removeItem(key(boardId, 'token')),
   getOnboardingSeen: (boardId: string) => localStorage.getItem(key(boardId, 'onboarded')) === '1',
   setOnboardingSeen: (boardId: string) => localStorage.setItem(key(boardId, 'onboarded'), '1'),
   getLastSeen: (boardId: string, col: string) =>
