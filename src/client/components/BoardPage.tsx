@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
 import { storage } from '../lib/storage.js'
@@ -25,6 +25,7 @@ export default function BoardPage() {
   const [format, setFormat] = useState('mad-sad-glad')
   const [boardTitle, setBoardTitle] = useState('')
   const [boardCreatedAt, setBoardCreatedAt] = useState<number | null>(null)
+  const [boardLastActivityAt, setBoardLastActivityAt] = useState<number | null>(null)
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set())
   const [revealSequence, setRevealSequence] = useState<string[]>([])
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
@@ -92,6 +93,7 @@ export default function BoardPage() {
         setFormat(msg.format)
         setBoardTitle(msg.title)
         setBoardCreatedAt(msg.created_at)
+        setBoardLastActivityAt(msg.last_activity_at)
         break
 
       case 'card_update':
@@ -288,8 +290,11 @@ export default function BoardPage() {
           )}
         </div>
 
-        {/* Retention box */}
-        <RetentionBox createdAt={boardCreatedAt} />
+        {/* Retention box + privacy link */}
+        <div className="flex flex-col items-end gap-0.5">
+          <RetentionBox lastActivityAt={boardLastActivityAt} />
+          <Link to="/privacy" className="text-text-3 text-[10px] hover:text-text-2 transition-colors">Privacy</Link>
+        </div>
       </header>
 
       {/* Lock banner — visible to all participants */}
@@ -405,13 +410,13 @@ export default function BoardPage() {
 
 // ── Retention box ─────────────────────────────────────────────────────────────
 
-function RetentionBox({ createdAt }: { createdAt: number | null }) {
+function RetentionBox({ lastActivityAt }: { lastActivityAt: number | null }) {
   const [label, setLabel] = useState('')
 
   useEffect(() => {
-    if (!createdAt) return
+    if (!lastActivityAt) return
     function update() {
-      const expiresAt = (createdAt! + 604800) * 1000
+      const expiresAt = (lastActivityAt! + 604800) * 1000
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }
       const dLeft = Math.floor(msLeft / 86_400_000)
@@ -425,7 +430,7 @@ function RetentionBox({ createdAt }: { createdAt: number | null }) {
     update()
     const id = setInterval(update, 60_000)
     return () => clearInterval(id)
-  }, [createdAt])
+  }, [lastActivityAt])
 
   if (!label) return null
   return <p className="text-text-3 text-xs">{label}</p>

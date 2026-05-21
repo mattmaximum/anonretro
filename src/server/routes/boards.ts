@@ -38,7 +38,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
 
     const now = Math.floor(Date.now() / 1000)
     const boardRow = board as { id: string }
-    if (now - ((board as any).created_at) > 604800) {
+    if (now - ((board as any).last_activity_at) > 604800) {
       return reply.status(410).send({ error: 'Board has expired.' })
     }
 
@@ -98,7 +98,7 @@ function runEviction() {
     const toDelete = count - EVICTION_LIMIT
     const oldest = getOldestBoards.all(toDelete) as Array<{ id: string }>
     for (const row of oldest) {
-      deleteBoard.run(row.id)
+      deleteBoardFull(row.id)
     }
   } catch (err) {
     console.error('Eviction error (non-fatal):', err)

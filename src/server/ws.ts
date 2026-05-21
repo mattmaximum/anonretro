@@ -196,7 +196,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
     if (!boardRow) { ws.close(4004, 'Board not found'); return }
 
     const now = Math.floor(Date.now() / 1000)
-    if (now - boardRow.created_at > 604800) { ws.close(4004, 'Board expired'); return }
+    if (now - boardRow.last_activity_at > 604800) { ws.close(4004, 'Board expired'); return }
 
     const participant = getParticipant.get(boardId, token) as any
     if (!participant) { ws.close(4001, 'Invalid token'); return }
@@ -225,6 +225,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
       format: boardRow.format,
       title: boardRow.title ?? '',
       created_at: boardRow.created_at,
+      last_activity_at: boardRow.last_activity_at,
       my_voted_card_ids: myVotedCards,
     })
 
@@ -303,6 +304,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const newBlur = board.blur_enabled === 1 ? 0 : 1
           updateBoardBlur.run(newBlur, boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           if (newBlur === 0) {
             const allCards = getCards.all(boardId) as any[]
             broadcast(boardId, { type: 'reveal', sequence: allCards.map((c: any) => c.id) })
@@ -321,6 +323,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
         case 'admin:reveal': {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           updateBoardBlur.run(0, boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           const allCards = getCards.all(boardId) as any[]
           broadcast(boardId, { type: 'reveal', sequence: allCards.map((c: any) => c.id) })
           const revMap = buildIdentityMap(boardId)
@@ -332,6 +335,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const newLocked = board.locked === 1 ? 0 : 1
           updateBoardLock.run(newLocked, boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'board_locked', locked: newLocked === 1 })
           break
         }
@@ -340,6 +344,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const expiresAt = Math.floor(Date.now() / 1000) + msg.duration_seconds
           updateTimerStart.run(expiresAt, msg.label, boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           recordDailyTimerStarted.run(utcDate())
           armTimer(boardId, expiresAt)
           broadcast(boardId, { type: 'timer:started', expires_at: expiresAt, label: msg.label })
@@ -351,6 +356,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const pausedAt = Math.floor(Date.now() / 1000)
           disarmTimer(boardId)
           updateTimerPause.run(pausedAt, boardId)
+          updateBoardActivity.run(pausedAt, boardId)
           broadcast(boardId, { type: 'timer:paused', paused_at: pausedAt, remaining_seconds: Math.max(0, board.timer_expires_at - pausedAt) })
           break
         }
@@ -361,6 +367,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const remaining = board.timer_expires_at - board.timer_paused_at
           const newExpires = resumeNow + remaining
           updateTimerResume.run(newExpires, boardId)
+          updateBoardActivity.run(resumeNow, boardId)
           armTimer(boardId, newExpires)
           broadcast(boardId, { type: 'timer:resumed', expires_at: newExpires })
           break
@@ -370,6 +377,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           disarmTimer(boardId)
           updateTimerClear.run(boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'timer:cancelled' })
           break
         }

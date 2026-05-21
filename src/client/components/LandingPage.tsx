@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { FORMATS } from '@shared/formats'
 import { storage } from '../lib/storage.js'
 
@@ -118,6 +118,10 @@ export default function LandingPage() {
           To keep it that way, I rely on the community to help cover the server hosting and development time.
         </p>
       </div>
+
+      <p className="text-text-3 text-xs">
+        <Link to="/privacy" className="hover:text-text-2 transition-colors">Privacy Policy</Link>
+      </p>
     </div>
   )
 }
