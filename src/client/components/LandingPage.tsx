@@ -48,44 +48,41 @@ export default function LandingPage() {
       </div>
 
       {/* Create a new board */}
-      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 flex flex-col gap-5">
-        <h2 className="font-semibold text-text-1">Create a new board</h2>
-        <div className="flex flex-col gap-3">
+      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-6 py-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="font-semibold text-text-1 flex-shrink-0">Create a new board</h2>
           <input
             type="text"
             value={title}
             onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
             maxLength={100}
-            placeholder="Board title (e.g. Sprint 42 Retro) *"
-            className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
+            placeholder="Board title (e.g. Sprint 42 Retro)"
+            className={`flex-1 bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
           />
-          {error && <p className="text-danger text-sm">{error}</p>}
-          <div className="flex flex-wrap gap-2">
-            {FORMATS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFormat(f.id)}
-                className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                  format === f.id
-                    ? 'bg-accent-muted text-accent font-medium'
-                    : 'text-text-2 hover:bg-raised hover:text-text-1'
-                }`}
-              >
-                {f.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Create button centered below both halves */}
-        <div className="flex justify-center pt-1">
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-6 rounded transition-colors disabled:opacity-50"
+            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50 flex-shrink-0"
           >
             {creating ? 'Creating…' : 'Create board'}
           </button>
+        </div>
+        {error && <p className="text-danger text-sm">{error}</p>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-text-3 text-xs font-medium flex-shrink-0">Board format:</span>
+          {FORMATS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFormat(f.id)}
+              className={`px-3 py-1 rounded text-xs transition-colors ${
+                format === f.id
+                  ? 'bg-accent-muted text-accent font-medium'
+                  : 'text-text-2 hover:bg-raised hover:text-text-1'
+              }`}
+            >
+              {f.name}
+            </button>
+          ))}
         </div>
       </div>
 
