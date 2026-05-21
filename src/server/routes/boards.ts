@@ -5,6 +5,7 @@ import {
   insertBoard, getBoard, getParticipant, countBoards,
   getOldestBoards, deleteBoard, joinBoardTx,
   recordDailyBoardCreated, recordDailyParticipantJoined, deleteBoardFull,
+  deleteExpiredBoards,
 } from '../db.js'
 import { IDENTITY_POOL, EVICTION_LIMIT } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
@@ -92,6 +93,11 @@ function utcDate(): string {
 
 function runEviction() {
   try {
+    // 1. Time-based: purge boards inactive for 7+ days
+    const cutoff = Math.floor(Date.now() / 1000) - 604800
+    deleteExpiredBoards(cutoff)
+
+    // 2. Safety net: if still over the hard cap, evict oldest
     const { count } = countBoards.get() as { count: number }
     if (count <= EVICTION_LIMIT) return
 

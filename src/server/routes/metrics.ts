@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
 import db, {
   DB_PATH, getDailyStats, getFormatBreakdown,
-  getTotalParticipants, getTotalCards, countBoards,
+  getTotalParticipants, getTotalCards, countBoards, countActiveBoards,
 } from '../db.js'
 import { getConnectedCount } from '../ws.js'
 
@@ -40,7 +40,8 @@ function uptimeStr(): string {
 }
 
 function renderPage(data: {
-  boardCount: number
+  activeBoardCount: number
+  totalBoardCount: number
   connectedNow: number
   totalParticipants: number
   totalCards: number
@@ -118,7 +119,8 @@ function renderPage(data: {
   <div>
     <p class="section-title">Live</p>
     <div class="stat-grid">
-      <div class="stat-card"><div class="val">${data.boardCount}</div><div class="lbl">Active boards</div></div>
+      <div class="stat-card"><div class="val">${data.activeBoardCount}</div><div class="lbl">Active boards (7d)</div></div>
+      <div class="stat-card"><div class="val">${data.totalBoardCount}</div><div class="lbl">Total boards (DB)</div></div>
       <div class="stat-card"><div class="val">${data.connectedNow}</div><div class="lbl">Connected now</div></div>
       <div class="stat-card"><div class="val">${data.totalParticipants}</div><div class="lbl">Participants (all time)</div></div>
       <div class="stat-card"><div class="val">${data.totalCards}</div><div class="lbl">Cards (all time)</div></div>
@@ -179,7 +181,9 @@ export default async function metricsRoutes(fastify: FastifyInstance) {
       return reply.code(401).type('text/plain').send('Unauthorized')
     }
 
-    const { count: boardCount } = countBoards.get() as { count: number }
+    const cutoff = Math.floor(Date.now() / 1000) - 604800
+    const { count: activeBoardCount } = countActiveBoards.get(cutoff) as { count: number }
+    const { count: totalBoardCount } = countBoards.get() as { count: number }
     const { count: totalParticipants } = getTotalParticipants.get() as { count: number }
     const { count: totalCards } = getTotalCards.get() as { count: number }
     const formats = getFormatBreakdown.all() as Array<{ format: string; count: number }>
@@ -188,7 +192,8 @@ export default async function metricsRoutes(fastify: FastifyInstance) {
     }>
 
     const html = renderPage({
-      boardCount,
+      activeBoardCount,
+      totalBoardCount,
       connectedNow: getConnectedCount(),
       totalParticipants,
       totalCards,

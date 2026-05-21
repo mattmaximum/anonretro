@@ -1,7 +1,7 @@
 export const BOARD_CAPACITY = 100
 export const CARD_MAX_LENGTH = 500
 export const BOARD_EXPIRY_SECONDS = 604800
-export const EVICTION_LIMIT = 5000
+export const EVICTION_LIMIT = 100_000
 
 export const COLORS = [
   { name: 'Red',    hex: '#EF4444' },

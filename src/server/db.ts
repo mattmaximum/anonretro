@@ -183,6 +183,17 @@ export const countBoards = db.prepare(
   'SELECT COUNT(*) as count FROM boards'
 )
 
+export const countActiveBoards = db.prepare<[number]>(
+  'SELECT COUNT(*) as count FROM boards WHERE last_activity_at >= ?'
+)
+
+export const deleteExpiredBoards = db.transaction((cutoff: number) => {
+  db.prepare('DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?))').run(cutoff)
+  db.prepare('DELETE FROM cards WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?)').run(cutoff)
+  db.prepare('DELETE FROM participants WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?)').run(cutoff)
+  db.prepare('DELETE FROM boards WHERE last_activity_at < ?').run(cutoff)
+})
+
 export const getActiveTimers = db.prepare(`
   SELECT id, timer_expires_at FROM boards
   WHERE timer_expires_at IS NOT NULL AND timer_paused_at IS NULL
