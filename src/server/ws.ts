@@ -80,8 +80,8 @@ function scrambleWord(word: string, seed: number): string {
 function scrambleContent(content: string, cardId: string): string {
   const seed = idSeed(cardId)
   const words = content.trim().split(/\s+/)
-  const preview = words.slice(0, 3).map((w, i) => scrambleWord(w, seed + i))
-  return words.length > 3 ? preview.join(' ') + ' …' : preview.join(' ')
+  const preview = words.slice(0, 7).map((w, i) => scrambleWord(w, seed + i))
+  return words.length > 7 ? preview.join(' ') + ' …' : preview.join(' ')
 }
 
 // ── Per-recipient card shape ──────────────────────────────────────────────────
