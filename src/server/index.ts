@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import rateLimit from '@fastify/rate-limit'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import path from 'path'
@@ -29,6 +30,14 @@ const fastify = Fastify({
       },
     },
   },
+})
+
+// Rate limiting — applied to all routes (WebSocket upgrades are exempt by nature)
+await fastify.register(rateLimit, {
+  global: true,
+  max: 60,
+  timeWindow: '1 minute',
+  keyGenerator: (req) => req.headers['cf-connecting-ip'] as string ?? req.ip,
 })
 
 // CORS
