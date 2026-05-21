@@ -47,23 +47,29 @@ export default function LandingPage() {
         <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. No anchoring.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
-        {/* Create */}
-        <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
-          <div>
-            <h2 className="font-semibold text-text-1">New board</h2>
-            <p className="text-text-3 text-xs mt-0.5">For facilitators only</p>
+      {/* Create a new board */}
+      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 flex flex-col gap-5">
+        <h2 className="font-semibold text-text-1">Create a new board</h2>
+        <div className="flex gap-6">
+          {/* Left: title input */}
+          <div className="flex-1 flex flex-col gap-3">
+            <input
+              type="text"
+              value={title}
+              onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
+              maxLength={100}
+              placeholder="Board title (e.g. Sprint 42 Retro) *"
+              className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
+            />
+            {error && <p className="text-danger text-sm">{error}</p>}
           </div>
-          <input
-            type="text"
-            value={title}
-            onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
-            maxLength={100}
-            placeholder="Board title (e.g. Sprint 42 Retro) *"
-            className={`bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
-          />
-          <p className="text-text-3 text-xs font-medium uppercase tracking-wide">Select your board format</p>
-          <div className="flex flex-col gap-2">
+
+          {/* Subtle vertical divider */}
+          <div className="w-px bg-border self-stretch" />
+
+          {/* Right: format selector */}
+          <div className="flex-1 flex flex-col gap-2">
+            <p className="text-text-3 text-xs font-medium uppercase tracking-wide">Select your board format</p>
             {FORMATS.map(f => (
               <button
                 key={f.id}
@@ -78,36 +84,39 @@ export default function LandingPage() {
               </button>
             ))}
           </div>
-          {error && <p className="text-danger text-sm">{error}</p>}
+        </div>
+
+        {/* Create button centered below both halves */}
+        <div className="flex justify-center pt-1">
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50"
+            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-6 rounded transition-colors disabled:opacity-50"
           >
             {creating ? 'Creating…' : 'Create board'}
           </button>
         </div>
+      </div>
 
-        {/* Join */}
-        <div className="flex-1 bg-surface rounded-lg p-6 flex flex-col gap-4 border border-border">
-          <h2 className="font-semibold text-text-1">Join a board</h2>
-          <form onSubmit={handleJoin} className="flex flex-col gap-3">
-            <input
-              type="text"
-              value={joinId}
-              onChange={e => setJoinId(e.target.value)}
-              placeholder="Paste board link or ID"
-              className="bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active"
-            />
-            <button
-              type="submit"
-              disabled={!joinId.trim() || joining}
-              className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50"
-            >
-              Join board
-            </button>
-          </form>
-        </div>
+      {/* Join a board */}
+      <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-6 py-4 flex items-center gap-6">
+        <h2 className="font-semibold text-text-1 flex-shrink-0">Join a board</h2>
+        <form onSubmit={handleJoin} className="flex flex-1 gap-3">
+          <input
+            type="text"
+            value={joinId}
+            onChange={e => setJoinId(e.target.value)}
+            placeholder="Paste board link or ID"
+            className="flex-1 bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active"
+          />
+          <button
+            type="submit"
+            disabled={!joinId.trim() || joining}
+            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50 flex-shrink-0"
+          >
+            Join board
+          </button>
+        </form>
       </div>
 
       {/* Support section */}

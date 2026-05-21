@@ -247,7 +247,14 @@ export const joinBoardTx = db.transaction((
   const available = pool.filter(p => !usedSet.has(`${p.color}:${p.animal}`))
   if (available.length === 0) return { error: 'CAPACITY' as const }
 
-  const identity = available[Math.floor(Math.random() * available.length)]
+  // Count usages per color, then restrict to colors at the minimum count
+  // so all colors are cycled evenly before any color repeats.
+  const colorCount = new Map<string, number>()
+  for (const u of used) colorCount.set(u.color, (colorCount.get(u.color) ?? 0) + 1)
+  const minCount = Math.min(...available.map(p => colorCount.get(p.color) ?? 0))
+  const candidates = available.filter(p => (colorCount.get(p.color) ?? 0) === minCount)
+
+  const identity = candidates[Math.floor(Math.random() * candidates.length)]
   insertParticipant.run(boardId, token, identity.color, identity.animal, now)
   return { identity }
 })
