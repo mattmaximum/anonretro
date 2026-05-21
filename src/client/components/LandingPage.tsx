@@ -44,7 +44,7 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-12">
       <div className="text-center">
         <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
-        <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. No anchoring.</p>
+        <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. Free to use.</p>
       </div>
 
       {/* Create a new board */}
@@ -68,8 +68,9 @@ export default function LandingPage() {
           </button>
         </div>
         {error && <p className="text-danger text-sm">{error}</p>}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-text-3 text-xs font-medium flex-shrink-0">Board format:</span>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-text-3 text-xs font-medium">Board format:</span>
+          <div className="flex flex-wrap gap-2">
           {FORMATS.map(f => (
             <button
               key={f.id}
@@ -83,6 +84,7 @@ export default function LandingPage() {
               {f.name}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
