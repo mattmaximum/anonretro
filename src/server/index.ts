@@ -9,7 +9,7 @@ import exportRoutes from './routes/export.js'
 import metricsRoutes from './routes/metrics.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
-import db from './db.js'
+import db, { deleteExpiredBoards } from './db.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT ?? 3000)
@@ -69,6 +69,18 @@ if (IS_PROD) {
   })
   fastify.setNotFoundHandler((_req, reply) => reply.sendFile('index.html'))
 }
+
+// Periodic expired-board cleanup — runs every 6 hours regardless of traffic
+function purgeExpiredBoards() {
+  try {
+    const cutoff = Math.floor(Date.now() / 1000) - 604800
+    deleteExpiredBoards(cutoff)
+  } catch (err) {
+    console.error('Scheduled board purge error (non-fatal):', err)
+  }
+}
+purgeExpiredBoards() // run once at startup to clean up any stale boards
+setInterval(purgeExpiredBoards, 6 * 60 * 60 * 1000)
 
 // Start
 initTimerService(broadcast)
