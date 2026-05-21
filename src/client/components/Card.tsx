@@ -65,7 +65,7 @@ export default function Card({ card, revealedIds, revealIndex, locked, onVote, o
 
         <div className="flex items-center gap-2">
           {/* Edit / delete (own cards only, not while revealing) */}
-          {card.is_own && !editing && !revealedIds.size && !locked && (
+          {card.is_own && !editing && !locked && (
             <div className="hidden group-hover:flex items-center gap-1">
               <button
                 onClick={() => { setDraft(card.content); setEditing(true) }}
