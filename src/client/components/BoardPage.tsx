@@ -273,18 +273,12 @@ export default function BoardPage() {
           <a href="/" className="text-xs font-medium px-2.5 py-1 rounded border border-border text-text-2 hover:text-text-1 hover:border-border-active flex-shrink-0 transition-colors">
             Go Home
           </a>
-          <div className="flex flex-col min-w-0 gap-0.5">
-            {boardTitle && (
-              <span className="text-sm leading-tight truncate">
-                <span className="text-text-3 font-normal">Board Name: </span>
-                <span className="font-semibold text-text-1">{boardTitle}</span>
-              </span>
-            )}
-            <span className="text-[11px] leading-tight">
-              <span className="text-text-3">Board Type: </span>
-              <span className="text-text-2">{fmt.name}</span>
+          {boardTitle && (
+            <span className="text-sm leading-tight truncate min-w-0">
+              <span className="text-text-3 font-normal">Board: </span>
+              <span className="font-semibold text-text-1">{boardTitle}</span>
             </span>
-          </div>
+          )}
           {identity && (
             <PresenceBar
               participants={participants}

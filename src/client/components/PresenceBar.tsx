@@ -18,8 +18,8 @@ export default function PresenceBar({ participants, myColor, myAnimal, isAdmin }
   const others = otherCount <= 0
     ? "You're the only one here so far."
     : otherCount === 1
-      ? `joined by 1 other colorful animal. Don't reveal who you are unless you want to.`
-      : `joined by ${otherCount} other colorful animals. Don't reveal who you are unless you want to.`
+      ? `joined by 1 other colorful animal.`
+      : `joined by ${otherCount} other colorful animals.`
   const identityLabel = otherCount <= 0 ? you + '. ' + others : `${you}, ${others}`
 
   return (

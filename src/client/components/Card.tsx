@@ -30,11 +30,10 @@ export default function Card({ card, revealedIds, revealIndex, locked, onVote, o
       role="article"
     >
       {card.blur ? (
-        <p className="text-sm italic leading-relaxed select-none" aria-label="Hidden card">
-          <span className="text-text-1">{card.content}</span>
-          {' '}
-          <span className="text-text-3 text-[11px] not-italic">(Hidden: wait for facilitator to reveal)</span>
-        </p>
+        <>
+          <p className="text-sm italic leading-relaxed select-none text-text-1" aria-label="Hidden card">{card.content}</p>
+          <span className="text-text-3 text-[11px] not-italic">(Hidden: wait for facilitator)</span>
+        </>
       ) : editing ? (
         <form
           onSubmit={e => {
