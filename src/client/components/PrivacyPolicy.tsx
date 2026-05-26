@@ -14,15 +14,14 @@ export default function PrivacyPolicy() {
             ← Back to home
           </button>
           <h1 className="text-2xl font-semibold text-text-1">Privacy Policy</h1>
-          <p className="text-text-3 text-sm mt-1">Last updated: May 2025</p>
+          <p className="text-text-3 text-sm mt-1">Last updated: May 2026</p>
         </div>
 
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Overview</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            AnonRetro is designed to collect as little data as possible. There are no accounts, no
-            tracking pixels, and no third-party analytics. This policy explains exactly what data
-            passes through the server and how long it is retained.
+            AnonRetro is designed to be frictionless — no accounts, no setup, no tracking pixels.
+            This policy explains exactly what data passes through the server and how long it is retained.
           </p>
         </section>
 
@@ -33,6 +32,7 @@ export default function PrivacyPolicy() {
             <p><span className="text-text-1 font-medium">Participant tokens.</span> When you join a board, a random hex token is generated and stored in your browser's localStorage. This token identifies you within a board session only — it is not linked to any personal information.</p>
             <p><span className="text-text-1 font-medium">Anonymous identities.</span> A random color + animal combination (e.g. "Blue Otter") is assigned to each participant per board. This is not linked to your identity.</p>
             <p><span className="text-text-1 font-medium">Aggregate usage metrics.</span> We count daily boards created, participants joined, cards added, and timers started. These counts contain no personal information and are used only to understand usage trends.</p>
+            <p><span className="text-text-1 font-medium">Page view analytics.</span> We use Cloudflare Web Analytics to measure traffic volume and referral sources. It does not use cookies, does not store IP addresses, and does not track individuals across sites or sessions. Only aggregated, anonymous data is collected.</p>
             <p><span className="text-text-1 font-medium">Server access logs.</span> Standard nginx access logs record IP addresses, timestamps, and request paths. Logs are rotated after 14 days and then deleted.</p>
           </div>
         </section>
@@ -42,7 +42,7 @@ export default function PrivacyPolicy() {
           <ul className="text-sm text-text-2 leading-relaxed list-disc list-inside flex flex-col gap-1">
             <li>Names, email addresses, or any account information</li>
             <li>Device fingerprints or browser identifiers</li>
-            <li>Third-party analytics or advertising tracking</li>
+            <li>Advertising tracking or behavioral profiling</li>
             <li>Cookies (localStorage tokens are stored client-side only)</li>
           </ul>
         </section>
@@ -74,8 +74,11 @@ export default function PrivacyPolicy() {
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Third-party services</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            AnonRetro does not use any third-party services that receive participant data. Fonts are
-            self-hosted — no requests are made to Google Fonts or any other external CDN.
+            AnonRetro uses <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Cloudflare Web Analytics</a> to
+            measure traffic and referral sources. Cloudflare receives page view data (URL, referrer,
+            device type, country) but no cookies are set, no IP addresses are stored, and no
+            individual is tracked across sessions. Participant card content is never sent to Cloudflare.
+            Fonts are self-hosted — no requests are made to Google Fonts or any other external CDN.
           </p>
         </section>
 
