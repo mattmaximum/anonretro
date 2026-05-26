@@ -3,6 +3,42 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-base:          #0E0E16;
+  --color-surface:       #181825;
+  --color-raised:        #222233;
+  --color-border:        #2C2C42;
+  --color-border-active: #5B5BD6;
+  --color-accent:        #8B83F4;
+  --color-accent-hover:  #7166E8;
+  --color-accent-muted:  #2D2B52;
+  --color-text-1:        #ECEAF5;
+  --color-text-2:        #8886A4;
+  --color-text-3:        #524F6A;
+  --color-success:       #4ADE80;
+  --color-warning:       #FBBF24;
+  --color-danger:        #F87171;
+  --color-blur-fill:     #1E1E2E;
+}
+
+.light {
+  --color-base:          #FAF9F6;
+  --color-surface:       #F0EDE6;
+  --color-raised:        #E6E2DA;
+  --color-border:        #D4CFCA;
+  --color-border-active: #5B5BD6;
+  --color-accent:        #6B5FD6;
+  --color-accent-hover:  #5A4FC4;
+  --color-accent-muted:  #EAE7FA;
+  --color-text-1:        #1C1A2E;
+  --color-text-2:        #5A5875;
+  --color-text-3:        #9490AA;
+  --color-success:       #16A34A;
+  --color-warning:       #D97706;
+  --color-danger:        #DC2626;
+  --color-blur-fill:     #E4E0D8;
+}
+
 @layer base {
   html, body, #root {
     @apply bg-base text-text-1 font-sans h-full;

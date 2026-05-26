@@ -1,5 +1,12 @@
 const key = (boardId: string, suffix: string) => `ar:${boardId}:${suffix}`
 
+export type Theme = 'dark' | 'light'
+
+export const themeStorage = {
+  get: (): Theme | null => localStorage.getItem('ar:theme') as Theme | null,
+  set: (theme: Theme) => localStorage.setItem('ar:theme', theme),
+}
+
 export const storage = {
   getToken: (boardId: string) => localStorage.getItem(key(boardId, 'token')),
   setToken: (boardId: string, token: string) => localStorage.setItem(key(boardId, 'token'), token),
