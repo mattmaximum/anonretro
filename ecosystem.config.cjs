@@ -10,7 +10,7 @@ module.exports = {
       NODE_ENV: 'production',
       PORT: 3000,
       DATABASE_PATH: '/var/data/anonretro/anonretro.db',
-      ALLOWED_ORIGINS: 'https://yourdomain.com',
+      ALLOWED_ORIGINS: 'https://anonretro.com,https://www.anonretro.com',
     },
   }],
 }
