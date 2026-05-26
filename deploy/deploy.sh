@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run from the repo root on the server: bash deploy/deploy.sh
 set -e
+cd "$(dirname "$0")/.."
 
 echo "→ Pulling latest code"
 git pull

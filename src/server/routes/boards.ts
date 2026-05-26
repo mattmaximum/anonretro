@@ -87,7 +87,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     broadcast(id, { type: 'board_deleted' })
     deleteBoardFull(id)
 
-    return reply.status(204).send()
+    return reply.status(204).send(null)
   })
 }
 
