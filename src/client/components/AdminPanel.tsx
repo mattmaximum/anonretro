@@ -123,7 +123,7 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
             onClick={() => onSend({ type: 'admin:lock_toggle', admin_token: adminToken })}
             className={locked
               ? 'w-full border border-border hover:border-border-active text-text-2 hover:text-text-1 py-2 rounded text-sm transition-colors'
-              : 'w-full bg-warning/20 hover:bg-warning/30 text-warning font-medium py-2 rounded text-sm transition-colors'
+              : 'w-full border border-warning/50 hover:border-warning/80 bg-warning/10 hover:bg-warning/20 text-warning font-medium py-2 rounded text-sm transition-colors'
             }
           >
             {locked ? 'Unlock board' : 'Lock board'}
@@ -175,7 +175,7 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
               <button
                 onClick={startTimer}
                 disabled={duration < 30}
-                className="w-full bg-success/20 hover:bg-success/30 text-success font-medium py-1.5 rounded text-sm transition-colors disabled:opacity-40"
+                className="w-full border border-success/50 hover:border-success/80 bg-success/10 hover:bg-success/20 text-success font-medium py-1.5 rounded text-sm transition-colors disabled:opacity-40"
               >
                 Start timer
               </button>
