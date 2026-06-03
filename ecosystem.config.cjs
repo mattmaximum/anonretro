@@ -2,6 +2,7 @@ module.exports = {
   apps: [{
     name: 'anonretro',
     script: 'dist/server/server/index.js',
+    cwd: '/app/anonretro/current',
     instances: 1,           // SQLite is single-writer
     autorestart: true,
     restart_delay: 2000,
