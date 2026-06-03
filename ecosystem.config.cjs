@@ -3,6 +3,7 @@ module.exports = {
     name: 'anonretro',
     script: 'dist/server/server/index.js',
     cwd: '/app/anonretro/current',
+    exec_mode: 'fork',      // cluster mode breaks import.meta.url in ESM
     instances: 1,           // SQLite is single-writer
     autorestart: true,
     restart_delay: 2000,
