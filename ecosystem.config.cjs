@@ -13,6 +13,7 @@ module.exports = {
       PORT: 3000,
       DATABASE_PATH: '/var/data/anonretro/anonretro.db',
       ALLOWED_ORIGINS: 'https://anonretro.com,https://www.anonretro.com',
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     },
   }],
 }
