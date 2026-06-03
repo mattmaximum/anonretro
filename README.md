@@ -200,3 +200,9 @@ sudo certbot --nginx -d yourdomain.com
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+
+---
+
+## License
+
+[MIT + Commons Clause](LICENSE) — free to read, fork, and self-host for personal or internal non-commercial use. Commercial use (running it as a paid service, selling access, etc.) requires written permission.
