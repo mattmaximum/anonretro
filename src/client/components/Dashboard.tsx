@@ -91,6 +91,19 @@ export default function Dashboard() {
     })
   }
 
+  function formatExpiry(lastActivityAt: number): string {
+    const msLeft = (lastActivityAt + 2592000) * 1000 - Date.now()
+    if (msLeft <= 0) return 'Expired'
+    const dLeft = Math.floor(msLeft / 86_400_000)
+    const hLeft = Math.floor((msLeft % 86_400_000) / 3_600_000)
+    const hTotal = Math.floor(msLeft / 3_600_000)
+    const mLeft = Math.floor(msLeft / 60_000)
+    if (dLeft >= 7) return `Expires in ${dLeft}d`
+    if (dLeft >= 1) return `Expires in ${dLeft}d ${hLeft}h`
+    if (hTotal >= 1) return `Expires in ${hTotal}h`
+    return `Expires in ${mLeft}m`
+  }
+
   if (!isLoaded || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -168,7 +181,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 <p className="text-text-3 text-xs mt-0.5">
-                  Last activity {formatDate(board.last_activity_at)} · {board.format}
+                  Last activity {formatDate(board.last_activity_at)} · {board.format} · {formatExpiry(board.last_activity_at)}
                 </p>
               </div>
 
