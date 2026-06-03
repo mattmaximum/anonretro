@@ -49,7 +49,7 @@ export default function UpgradeModal({ clerkUserId, onClose }: Props) {
             $29 once → unlimited boards, forever.
           </p>
           <p className="text-text-2 text-sm leading-relaxed">
-            That's it. The money covers hosting. This isn't a business — it's a tool that should exist.
+            One person built this. It costs about $250/year to run and your contribution would support the project. No VC money, no growth targets, no reason to ever charge you again.
           </p>
         </div>
 
