@@ -172,6 +172,7 @@ export default function LandingPage() {
       <p className="text-text-3 text-xs flex gap-4">
         <Link to="/about" className="hover:text-text-2 transition-colors">About</Link>
         <Link to="/privacy" className="hover:text-text-2 transition-colors">Privacy Policy</Link>
+        <a href="https://github.com/mattmaximum/anonretro/releases" target="_blank" rel="noopener noreferrer" className="hover:text-text-2 transition-colors">Changelog</a>
       </p>
     </div>
   )
