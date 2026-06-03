@@ -11,6 +11,15 @@ db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    clerk_user_id   TEXT UNIQUE NOT NULL,
+    is_pro          INTEGER NOT NULL DEFAULT 0,
+    lemonsqueezy_order_id TEXT,
+    email           TEXT,
+    created_at      TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS boards (
     id              TEXT PRIMARY KEY,
     admin_token     TEXT NOT NULL,
@@ -66,6 +75,8 @@ db.exec(`
 try { db.exec("ALTER TABLE boards ADD COLUMN title TEXT NOT NULL DEFAULT ''") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN locked INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN last_write_at INTEGER") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE boards ADD COLUMN owner_id TEXT") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE boards ADD COLUMN archived INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -74,7 +85,19 @@ export const getBoard = db.prepare<[string]>(
 )
 
 export const insertBoard = db.prepare(
-  'INSERT INTO boards (id, admin_token, blur_enabled, format, title, last_activity_at, created_at) VALUES (?, ?, 1, ?, ?, ?, ?)'
+  'INSERT INTO boards (id, admin_token, blur_enabled, format, title, last_activity_at, created_at, owner_id) VALUES (?, ?, 1, ?, ?, ?, ?, ?)'
+)
+
+export const getUserByClerkId = db.prepare<[string]>(
+  'SELECT * FROM users WHERE clerk_user_id = ?'
+)
+
+export const insertUser = db.prepare(
+  'INSERT INTO users (clerk_user_id, created_at) VALUES (?, ?)'
+)
+
+export const countActiveBoardsByOwner = db.prepare<[string]>(
+  'SELECT COUNT(*) as count FROM boards WHERE owner_id = ? AND archived = 0'
 )
 
 export const updateBoardActivity = db.prepare<[number, string]>(

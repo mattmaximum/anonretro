@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useAuth, useUser, SignInButton, UserButton } from '@clerk/react'
 import { FORMATS } from '@shared/formats'
 import { storage } from '../lib/storage.js'
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const { getToken, isLoaded: authLoaded } = useAuth()
+  const { isSignedIn } = useUser()
   const [format, setFormat] = useState(FORMATS[0].id)
   const [title, setTitle] = useState('')
   const [joinId, setJoinId] = useState('')
@@ -17,11 +20,19 @@ export default function LandingPage() {
     setCreating(true)
     setError('')
     try {
+      const token = await getToken()
       const res = await fetch('/api/boards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ format, title: title.trim() }),
       })
+      if (res.status === 402) {
+        setError("You've reached the free limit of 3 active boards. Upgrade for unlimited access.")
+        return
+      }
       if (!res.ok) throw new Error('Failed to create board')
       const data = await res.json()
       storage.setAdminToken(data.id, data.admin_token)
@@ -47,48 +58,65 @@ export default function LandingPage() {
           <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
           <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
         </div>
-        <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives. No accounts. Free to use.</p>
+        <p className="text-text-2 mt-2 text-sm">Anonymous retrospectives for your team. Participants join without an account.</p>
       </div>
 
       {/* Create a new board */}
       <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-6 py-4 flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-text-1 flex-shrink-0">Create a board</h2>
-          <input
-            type="text"
-            value={title}
-            onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
-            maxLength={100}
-            placeholder="Board title (e.g. Sprint 42 Retro)"
-            className={`flex-1 bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
-          />
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50 flex-shrink-0"
-          >
-            {creating ? 'Creating…' : 'Create board'}
-          </button>
-        </div>
-        {error && <p className="text-danger text-sm">{error}</p>}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-text-3 text-xs font-medium">Board format:</span>
-          <div className="flex flex-wrap gap-2">
-          {FORMATS.map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFormat(f.id)}
-              className={`px-3 py-1 rounded text-xs transition-colors ${
-                format === f.id
-                  ? 'bg-accent-muted text-accent font-medium'
-                  : 'text-text-2 hover:bg-raised hover:text-text-1'
-              }`}
-            >
-              {f.name}
-            </button>
-          ))}
+        {authLoaded && !isSignedIn ? (
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-text-1">Create a board</h2>
+              <p className="text-text-3 text-sm mt-0.5">Sign in to create and facilitate retros.</p>
+            </div>
+            <SignInButton mode="modal">
+              <button className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors flex-shrink-0">
+                Sign in
+              </button>
+            </SignInButton>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold text-text-1 flex-shrink-0">Create a board</h2>
+              <input
+                type="text"
+                value={title}
+                onChange={e => { setTitle(e.target.value); if (error === 'Board title is required.') setError('') }}
+                maxLength={100}
+                placeholder="Board title (e.g. Sprint 42 Retro)"
+                className={`flex-1 bg-raised border rounded px-3 py-2 text-sm text-text-1 placeholder:text-text-3 outline-none focus:border-border-active ${error === 'Board title is required.' ? 'border-danger' : 'border-border'}`}
+              />
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-4 rounded transition-colors disabled:opacity-50 flex-shrink-0"
+              >
+                {creating ? 'Creating…' : 'Create board'}
+              </button>
+              <UserButton />
+            </div>
+            {error && <p className="text-danger text-sm">{error}</p>}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-text-3 text-xs font-medium">Board format:</span>
+              <div className="flex flex-wrap gap-2">
+              {FORMATS.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFormat(f.id)}
+                  className={`px-3 py-1 rounded text-xs transition-colors ${
+                    format === f.id
+                      ? 'bg-accent-muted text-accent font-medium'
+                      : 'text-text-2 hover:bg-raised hover:text-text-1'
+                  }`}
+                >
+                  {f.name}
+                </button>
+              ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Join a board */}

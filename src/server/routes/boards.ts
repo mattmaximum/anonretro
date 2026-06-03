@@ -5,15 +5,36 @@ import {
   insertBoard, getBoard, getParticipant, countBoards,
   getOldestBoards, deleteBoard, joinBoardTx,
   recordDailyBoardCreated, recordDailyParticipantJoined, deleteBoardFull,
-  deleteExpiredBoards,
+  deleteExpiredBoards, getUserByClerkId, insertUser, countActiveBoardsByOwner,
 } from '../db.js'
 import { IDENTITY_POOL, EVICTION_LIMIT } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
 import { broadcast } from '../ws.js'
+import { getAuthUserId } from '../lib/auth.js'
+
+const FREE_BOARD_LIMIT = 3
 
 export default async function boardRoutes(fastify: FastifyInstance) {
-  // POST /api/boards — create a new board
+  // POST /api/boards — create a new board (requires auth)
   fastify.post('/api/boards', async (req, reply) => {
+    const clerkUserId = await getAuthUserId(req)
+    if (!clerkUserId) {
+      return reply.status(401).send({ error: 'Sign in to create boards.' })
+    }
+
+    // Upsert the user record and check board limit
+    let user = getUserByClerkId.get(clerkUserId) as { is_pro: number } | undefined
+    if (!user) {
+      insertUser.run(clerkUserId, new Date().toISOString())
+      user = { is_pro: 0 }
+    }
+    if (!user.is_pro) {
+      const { count } = countActiveBoardsByOwner.get(clerkUserId) as { count: number }
+      if (count >= FREE_BOARD_LIMIT) {
+        return reply.status(402).send({ error: 'BOARD_LIMIT_REACHED' })
+      }
+    }
+
     const body = req.body as { format?: string; title?: string }
     const format = FORMATS.find(f => f.id === body?.format) ?? FORMATS[0]
     const title = (body?.title ?? '').trim().slice(0, 100)
@@ -21,7 +42,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     const adminToken = randomBytes(16).toString('hex')
     const now = Math.floor(Date.now() / 1000)
 
-    insertBoard.run(id, adminToken, format.id, title, now, now)
+    insertBoard.run(id, adminToken, format.id, title, now, now, clerkUserId)
     recordDailyBoardCreated.run(utcDate())
 
     // Fire-and-forget eviction — runs after 201 returned
