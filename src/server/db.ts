@@ -114,6 +114,27 @@ export const updateBoardTitle = db.prepare<[string, string]>(
   'UPDATE boards SET title = ? WHERE id = ?'
 )
 
+export const setUserPro = db.prepare<[number, string, string]>(
+  'UPDATE users SET is_pro = ?, lemonsqueezy_order_id = ? WHERE clerk_user_id = ?'
+)
+
+export const getUserByOrderId = db.prepare<[string]>(
+  'SELECT * FROM users WHERE lemonsqueezy_order_id = ?'
+)
+
+export const getAllProUsers = db.prepare(
+  'SELECT clerk_user_id, email, lemonsqueezy_order_id, created_at FROM users WHERE is_pro = 1'
+)
+
+export const upsertUserProByClerkId = db.prepare(
+  `INSERT INTO users (clerk_user_id, is_pro, lemonsqueezy_order_id, email, created_at)
+   VALUES (?, 1, ?, ?, ?)
+   ON CONFLICT (clerk_user_id) DO UPDATE SET
+     is_pro = 1,
+     lemonsqueezy_order_id = excluded.lemonsqueezy_order_id,
+     email = excluded.email`
+)
+
 export const updateBoardActivity = db.prepare<[number, string]>(
   'UPDATE boards SET last_activity_at = ? WHERE id = ?'
 )

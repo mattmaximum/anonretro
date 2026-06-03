@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, useUser, UserButton } from '@clerk/react'
 
+const LS_CHECKOUT_BASE = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL as string | undefined
+
+function upgradeUrl(clerkUserId: string): string | null {
+  if (!LS_CHECKOUT_BASE) return null
+  return `${LS_CHECKOUT_BASE}?checkout[custom][clerk_user_id]=${encodeURIComponent(clerkUserId)}`
+}
+
 interface Board {
   id: string
   title: string
@@ -20,7 +27,7 @@ interface MeBoards {
 
 export default function Dashboard() {
   const { getToken, isLoaded } = useAuth()
-  const { isSignedIn } = useUser()
+  const { isSignedIn, user } = useUser()
   const navigate = useNavigate()
   const [data, setData] = useState<MeBoards | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -122,8 +129,17 @@ export default function Dashboard() {
           {!data.isPro && (
             <p className="text-text-3 text-sm mt-0.5">
               {data.activeCount} of {data.limit} active boards used
-              {data.activeCount >= data.limit && (
-                <> · <span className="text-accent">Upgrade for unlimited</span></>
+              {data.activeCount >= data.limit && user?.id && (
+                <>
+                  {' · '}
+                  {upgradeUrl(user.id) ? (
+                    <a href={upgradeUrl(user.id)!} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                      Upgrade for unlimited
+                    </a>
+                  ) : (
+                    <span className="text-accent">Upgrade for unlimited</span>
+                  )}
+                </>
               )}
             </p>
           )}

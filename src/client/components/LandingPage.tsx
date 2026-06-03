@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth, useUser, SignInButton, UserButton } from '@clerk/react'
+
+const LS_CHECKOUT_BASE = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL as string | undefined
+
+function upgradeUrl(clerkUserId: string): string | null {
+  if (!LS_CHECKOUT_BASE) return null
+  return `${LS_CHECKOUT_BASE}?checkout[custom][clerk_user_id]=${encodeURIComponent(clerkUserId)}`
+}
 import { FORMATS } from '@shared/formats'
 import { storage } from '../lib/storage.js'
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const { getToken, isLoaded: authLoaded } = useAuth()
-  const { isSignedIn } = useUser()
+  const { isSignedIn, user } = useUser()
   const [format, setFormat] = useState(FORMATS[0].id)
   const [title, setTitle] = useState('')
   const [joinId, setJoinId] = useState('')
@@ -113,9 +120,9 @@ export default function LandingPage() {
             {error === 'BOARD_LIMIT_REACHED' ? (
               <p className="text-danger text-sm">
                 You've reached the limit of 3 active boards.{' '}
-                <Link to="/dashboard" className="underline">Archive a board</Link>
+                <Link to="/dashboard" className="underline">Delete a board</Link>
                 {' '}to make room, or{' '}
-                <span className="underline cursor-pointer">upgrade for unlimited</span>.
+                <UpgradeLink clerkUserId={user?.id} className="underline">upgrade for unlimited</UpgradeLink>.
               </p>
             ) : error ? (
               <p className="text-danger text-sm">{error}</p>
@@ -124,6 +131,9 @@ export default function LandingPage() {
               <p className="text-text-3 text-xs">
                 {activeCount} of {FREE_LIMIT} active boards used ·{' '}
                 <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
+                {activeCount >= FREE_LIMIT && user?.id && upgradeUrl(user.id) && (
+                  <> · <UpgradeLink clerkUserId={user.id} className="hover:text-text-2 transition-colors">Upgrade for unlimited</UpgradeLink></>
+                )}
               </p>
             )}
             <div className="flex flex-col gap-1.5">
@@ -175,5 +185,19 @@ export default function LandingPage() {
         <a href="https://github.com/mattmaximum/anonretro/releases" target="_blank" rel="noopener noreferrer" className="hover:text-text-2 transition-colors">Changelog</a>
       </p>
     </div>
+  )
+}
+
+function UpgradeLink({ clerkUserId, className, children }: {
+  clerkUserId?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  const url = clerkUserId ? upgradeUrl(clerkUserId) : null
+  if (!url) return <span className={className}>{children}</span>
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
   )
 }

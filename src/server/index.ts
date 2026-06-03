@@ -9,6 +9,7 @@ import boardRoutes from './routes/boards.js'
 import exportRoutes from './routes/export.js'
 import metricsRoutes from './routes/metrics.js'
 import meRoutes from './routes/me.js'
+import webhookRoutes from './routes/webhook.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
 import db, { deleteExpiredBoards } from './db.js'
@@ -63,6 +64,7 @@ await fastify.register(boardRoutes)
 await fastify.register(exportRoutes)
 await fastify.register(metricsRoutes)
 await fastify.register(meRoutes)
+await fastify.register(webhookRoutes)
 await fastify.register(wsRoutes)
 
 // Health check
