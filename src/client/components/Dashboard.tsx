@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, useUser, UserButton } from '@clerk/react'
-
-const LS_CHECKOUT_BASE = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL as string | undefined
-
-function upgradeUrl(clerkUserId: string): string | null {
-  if (!LS_CHECKOUT_BASE) return null
-  return `${LS_CHECKOUT_BASE}?checkout[custom][clerk_user_id]=${encodeURIComponent(clerkUserId)}`
-}
+import UpgradeModal from './UpgradeModal.js'
 
 interface Board {
   id: string
@@ -33,6 +27,7 @@ export default function Dashboard() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
@@ -123,23 +118,17 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6 gap-8 pt-12">
+      {showUpgrade && (
+        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
+      )}
       <div className="w-full max-w-2xl flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-text-1 tracking-tight">My boards</h1>
           {!data.isPro && (
             <p className="text-text-3 text-sm mt-0.5">
               {data.activeCount} of {data.limit} active boards used
-              {data.activeCount >= data.limit && user?.id && (
-                <>
-                  {' · '}
-                  {upgradeUrl(user.id) ? (
-                    <a href={upgradeUrl(user.id)!} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                      Upgrade for unlimited
-                    </a>
-                  ) : (
-                    <span className="text-accent">Upgrade for unlimited</span>
-                  )}
-                </>
+              {data.activeCount >= data.limit && (
+                <> · <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade for unlimited</button></>
               )}
             </p>
           )}

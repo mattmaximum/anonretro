@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth, useUser, SignInButton, UserButton } from '@clerk/react'
-
-const LS_CHECKOUT_BASE = import.meta.env.VITE_LEMON_SQUEEZY_CHECKOUT_URL as string | undefined
-
-function upgradeUrl(clerkUserId: string): string | null {
-  if (!LS_CHECKOUT_BASE) return null
-  return `${LS_CHECKOUT_BASE}?checkout[custom][clerk_user_id]=${encodeURIComponent(clerkUserId)}`
-}
 import { FORMATS } from '@shared/formats'
 import { storage } from '../lib/storage.js'
+import UpgradeModal from './UpgradeModal.js'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -23,6 +17,7 @@ export default function LandingPage() {
   const [error, setError] = useState('')
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [isPro, setIsPro] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const FREE_LIMIT = 3
 
   useEffect(() => {
@@ -74,6 +69,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-12">
+      {showUpgrade && (
+        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
+      )}
+
       <div className="text-center">
         <div className="flex items-center justify-center gap-2.5">
           <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
@@ -122,7 +121,7 @@ export default function LandingPage() {
                 You've reached the limit of 3 active boards.{' '}
                 <Link to="/dashboard" className="underline">Delete a board</Link>
                 {' '}to make room, or{' '}
-                <UpgradeLink clerkUserId={user?.id} className="underline">upgrade for unlimited</UpgradeLink>.
+                <button onClick={() => setShowUpgrade(true)} className="underline">upgrade for unlimited</button>.
               </p>
             ) : error ? (
               <p className="text-danger text-sm">{error}</p>
@@ -131,8 +130,8 @@ export default function LandingPage() {
               <p className="text-text-3 text-xs">
                 {activeCount} of {FREE_LIMIT} active boards used ·{' '}
                 <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
-                {activeCount >= FREE_LIMIT && user?.id && upgradeUrl(user.id) && (
-                  <> · <UpgradeLink clerkUserId={user.id} className="hover:text-text-2 transition-colors">Upgrade for unlimited</UpgradeLink></>
+                {activeCount >= FREE_LIMIT && (
+                  <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
                 )}
               </p>
             )}
@@ -183,21 +182,10 @@ export default function LandingPage() {
         <Link to="/about" className="hover:text-text-2 transition-colors">About</Link>
         <Link to="/privacy" className="hover:text-text-2 transition-colors">Privacy Policy</Link>
         <a href="https://github.com/mattmaximum/anonretro/releases" target="_blank" rel="noopener noreferrer" className="hover:text-text-2 transition-colors">Changelog</a>
+        {isSignedIn && !isPro && (
+          <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade</button>
+        )}
       </p>
     </div>
-  )
-}
-
-function UpgradeLink({ clerkUserId, className, children }: {
-  clerkUserId?: string
-  className?: string
-  children: React.ReactNode
-}) {
-  const url = clerkUserId ? upgradeUrl(clerkUserId) : null
-  if (!url) return <span className={className}>{children}</span>
-  return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={className}>
-      {children}
-    </a>
   )
 }
