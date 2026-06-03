@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import {
-  getBoardsByOwner, countActiveBoardsByOwner, archiveBoard,
-  getUserByClerkId, insertUser,
+  getBoardsByOwner, countActiveBoardsByOwner,
+  getUserByClerkId, insertUser, updateBoardTitle, deleteBoardFull,
 } from '../db.js'
 import { getAuthUserId } from '../lib/auth.js'
 
@@ -20,20 +20,36 @@ export default async function meRoutes(fastify: FastifyInstance) {
     return { boards, activeCount, isPro, limit: 3 }
   })
 
-  // PATCH /api/me/boards/:id/archive — archive a board to free up a slot
-  fastify.patch('/api/me/boards/:id/archive', async (req, reply) => {
+  // DELETE /api/me/boards/:id — hard delete a board and all its data
+  fastify.delete('/api/me/boards/:id', async (req, reply) => {
     const clerkUserId = await getAuthUserId(req)
     if (!clerkUserId) return reply.status(401).send({ error: 'Unauthorized.' })
 
-    // Ensure user record exists
-    if (!getUserByClerkId.get(clerkUserId)) {
-      insertUser.run(clerkUserId, new Date().toISOString())
+    const { id } = req.params as { id: string }
+    const boards = getBoardsByOwner.all(clerkUserId) as Array<{ id: string }>
+    if (!boards.find(b => b.id === id)) {
+      return reply.status(404).send({ error: 'Board not found.' })
     }
 
-    const { id } = req.params as { id: string }
-    const result = archiveBoard.run(id, clerkUserId)
-    if (result.changes === 0) return reply.status(404).send({ error: 'Board not found.' })
+    deleteBoardFull(id)
+    return reply.status(204).send(null)
+  })
 
+  // PATCH /api/me/boards/:id/title — rename a board from the dashboard
+  fastify.patch('/api/me/boards/:id/title', async (req, reply) => {
+    const clerkUserId = await getAuthUserId(req)
+    if (!clerkUserId) return reply.status(401).send({ error: 'Unauthorized.' })
+
+    const { id } = req.params as { id: string }
+    const { title } = req.body as { title?: string }
+    if (typeof title !== 'string') return reply.status(400).send({ error: 'title required.' })
+
+    const boards = getBoardsByOwner.all(clerkUserId) as Array<{ id: string }>
+    if (!boards.find(b => b.id === id)) {
+      return reply.status(404).send({ error: 'Board not found.' })
+    }
+
+    updateBoardTitle.run(title.trim().slice(0, 100), id)
     return reply.status(204).send(null)
   })
 }

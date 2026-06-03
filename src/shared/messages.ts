@@ -14,6 +14,7 @@ export const InboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('admin:timer_pause'),   admin_token: z.string() }),
   z.object({ type: z.literal('admin:timer_resume'),  admin_token: z.string() }),
   z.object({ type: z.literal('admin:timer_cancel'),  admin_token: z.string() }),
+  z.object({ type: z.literal('admin:title_change'),  admin_token: z.string(), title: z.string().max(100) }),
 ])
 
 export type InboundMessage = z.infer<typeof InboundSchema>
@@ -55,5 +56,6 @@ export type OutboundMessage =
   | { type: 'timer:resumed';   expires_at: number }
   | { type: 'timer:cancelled' }
   | { type: 'timer:expired' }
+  | { type: 'title_changed'; title: string }
   | { type: 'board_deleted' }
   | { type: 'error'; code: 'INVALID_MESSAGE' | 'RATE_LIMITED' | 'NOT_OWNER' | 'NOT_ADMIN' | 'BOARD_EXPIRED' | 'BOARD_NOT_FOUND' | 'BOARD_LOCKED' }

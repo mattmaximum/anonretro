@@ -110,6 +110,10 @@ export const archiveBoard = db.prepare<[string, string]>(
   'UPDATE boards SET archived = 1 WHERE id = ? AND owner_id = ?'
 )
 
+export const updateBoardTitle = db.prepare<[string, string]>(
+  'UPDATE boards SET title = ? WHERE id = ?'
+)
+
 export const updateBoardActivity = db.prepare<[number, string]>(
   'UPDATE boards SET last_activity_at = ? WHERE id = ?'
 )

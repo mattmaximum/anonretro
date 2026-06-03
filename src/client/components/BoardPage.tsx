@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
@@ -35,6 +35,9 @@ export default function BoardPage() {
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting')
   const [expiredCode, setExpiredCode] = useState<number | null>(null)
   const [boardDeletedByAdmin, setBoardDeletedByAdmin] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   // Identity
   const [token, setToken] = useState<string | null>(null)
@@ -156,6 +159,10 @@ export default function BoardPage() {
         setBoardLocked(msg.locked)
         break
 
+      case 'title_changed':
+        setBoardTitle(msg.title)
+        break
+
       case 'board_deleted':
         setBoardDeletedByAdmin(true)
         break
@@ -181,6 +188,24 @@ export default function BoardPage() {
       setSearchParams(sp, { replace: true })
     }
   }, [showShare])
+
+  useLayoutEffect(() => {
+    if (editingTitle) titleInputRef.current?.select()
+  }, [editingTitle])
+
+  function startTitleEdit() {
+    setTitleDraft(boardTitle)
+    setEditingTitle(true)
+  }
+
+  function commitTitleEdit() {
+    if (!adminToken) return
+    const trimmed = titleDraft.trim().slice(0, 100)
+    if (trimmed !== boardTitle) {
+      send({ type: 'admin:title_change', admin_token: adminToken, title: trimmed })
+    }
+    setEditingTitle(false)
+  }
 
   // Keep browser tab title in sync
   useEffect(() => {
@@ -277,9 +302,38 @@ export default function BoardPage() {
             Go Home
           </a>
           {boardTitle && (
-            <span className="text-sm leading-tight truncate min-w-0">
-              <span className="text-text-3 font-normal">Board: </span>
-              <span className="font-semibold text-text-1">{boardTitle}</span>
+            <span className="text-sm leading-tight truncate min-w-0 flex items-center gap-1">
+              <span className="text-text-3 font-normal flex-shrink-0">Board: </span>
+              {isAdmin && editingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={titleDraft}
+                  onChange={e => setTitleDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitTitleEdit()
+                    if (e.key === 'Escape') setEditingTitle(false)
+                  }}
+                  onBlur={commitTitleEdit}
+                  maxLength={100}
+                  className="bg-raised border border-border-active rounded px-2 py-0.5 text-sm font-semibold text-text-1 outline-none min-w-0 w-48"
+                />
+              ) : (
+                <>
+                  <span className="font-semibold text-text-1 truncate">{boardTitle}</span>
+                  {isAdmin && (
+                    <button
+                      onClick={startTitleEdit}
+                      className="text-text-3 hover:text-text-1 transition-colors flex-shrink-0 ml-0.5"
+                      title="Rename board"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
             </span>
           )}
           {identity && (
@@ -425,14 +479,15 @@ function RetentionBox({ lastActivityAt }: { lastActivityAt: number | null }) {
   useEffect(() => {
     if (!lastActivityAt) return
     function update() {
-      const expiresAt = (lastActivityAt! + 604800) * 1000
+      const expiresAt = (lastActivityAt! + 2592000) * 1000 // 30 days
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }
       const dLeft = Math.floor(msLeft / 86_400_000)
       const hLeft = Math.floor((msLeft % 86_400_000) / 3_600_000)
       const hTotal = Math.floor(msLeft / 3_600_000)
       const mLeft = Math.floor(msLeft / 60_000)
-      if (dLeft >= 1) setLabel(`Expires in ${dLeft}d ${hLeft}h`)
+      if (dLeft >= 7) setLabel(`Expires in ${dLeft}d`)
+      else if (dLeft >= 1) setLabel(`Expires in ${dLeft}d ${hLeft}h`)
       else if (hTotal >= 1) setLabel(`Expires in ${hTotal}h`)
       else setLabel(`Expires in ${mLeft}m`)
     }

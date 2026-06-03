@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   getBoard, getCards, getCard, getParticipant, getParticipants,
   insertCard, updateCard, deleteCard, voteToggleTx,
-  updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateTimerStart,
+  updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateBoardTitle, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
 } from './db.js'
@@ -380,6 +380,15 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           updateTimerClear.run(boardId)
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'timer:cancelled' })
+          break
+        }
+
+        case 'admin:title_change': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const title = msg.title.trim().slice(0, 100)
+          updateBoardTitle.run(title, boardId)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcast(boardId, { type: 'title_changed', title })
           break
         }
       }
