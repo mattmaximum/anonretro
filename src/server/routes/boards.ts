@@ -60,7 +60,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
 
     const now = Math.floor(Date.now() / 1000)
     const boardRow = board as { id: string }
-    if (now - ((board as any).last_activity_at) > 604800) {
+    if (now - ((board as any).last_activity_at) > 2592000) { // 30 days
       return reply.status(410).send({ error: 'Board has expired.' })
     }
 
@@ -119,7 +119,7 @@ function utcDate(): string {
 function runEviction() {
   try {
     // 1. Time-based: purge boards inactive for 7+ days
-    const cutoff = Math.floor(Date.now() / 1000) - 604800
+    const cutoff = Math.floor(Date.now() / 1000) - 2592000 // 30 days
     deleteExpiredBoards(cutoff)
 
     // 2. Safety net: if still over the hard cap, evict oldest

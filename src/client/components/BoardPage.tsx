@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { UserButton, useUser } from '@clerk/react'
 import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
 import { storage } from '../lib/storage.js'
@@ -15,6 +16,7 @@ type WsStatus = 'connecting' | 'connected' | 'reconnecting' | 'dead'
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { isSignedIn } = useUser()
 
   // Board state
   const [cards, setCards] = useState<CardData[]>([])
@@ -212,7 +214,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6">
         <p className="text-text-1 text-lg font-medium">This board has expired.</p>
-        <p className="text-text-2 text-sm">Boards are automatically deleted after 7 days.</p>
+        <p className="text-text-2 text-sm">Boards are automatically deleted after 30 days of inactivity.</p>
         <a href="/" className="text-accent hover:underline text-sm mt-2">Start a new retro →</a>
       </div>
     )
@@ -290,10 +292,13 @@ export default function BoardPage() {
           )}
         </div>
 
-        {/* Retention box + privacy link */}
+        {/* Retention box + privacy link + account */}
         <div className="flex flex-col items-end gap-0.5">
           <RetentionBox lastActivityAt={boardLastActivityAt} />
-          <Link to="/privacy" className="text-text-3 text-[10px] hover:text-text-2 transition-colors">Privacy</Link>
+          <div className="flex items-center gap-2">
+            <Link to="/privacy" className="text-text-3 text-[10px] hover:text-text-2 transition-colors">Privacy</Link>
+            {isSignedIn && <UserButton />}
+          </div>
         </div>
       </header>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth, useUser, SignInButton, UserButton } from '@clerk/react'
 import { FORMATS } from '@shared/formats'
@@ -14,6 +14,20 @@ export default function LandingPage() {
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
+  const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [isPro, setIsPro] = useState(false)
+  const FREE_LIMIT = 3
+
+  useEffect(() => {
+    if (!isSignedIn) return
+    getToken().then(token => {
+      if (!token) return
+      fetch('/api/me/boards', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro) })
+        .catch(() => {})
+    })
+  }, [isSignedIn])
 
   async function handleCreate() {
     if (!title.trim()) { setError('Board title is required.'); return }
@@ -30,7 +44,7 @@ export default function LandingPage() {
         body: JSON.stringify({ format, title: title.trim() }),
       })
       if (res.status === 402) {
-        setError("You've reached the free limit of 3 active boards. Upgrade for unlimited access.")
+        setError('BOARD_LIMIT_REACHED')
         return
       }
       if (!res.ok) throw new Error('Failed to create board')
@@ -96,7 +110,22 @@ export default function LandingPage() {
               </button>
               <UserButton />
             </div>
-            {error && <p className="text-danger text-sm">{error}</p>}
+            {error === 'BOARD_LIMIT_REACHED' ? (
+              <p className="text-danger text-sm">
+                You've reached the limit of 3 active boards.{' '}
+                <Link to="/dashboard" className="underline">Archive a board</Link>
+                {' '}to make room, or{' '}
+                <span className="underline cursor-pointer">upgrade for unlimited</span>.
+              </p>
+            ) : error ? (
+              <p className="text-danger text-sm">{error}</p>
+            ) : null}
+            {!isPro && activeCount !== null && (
+              <p className="text-text-3 text-xs">
+                {activeCount} of {FREE_LIMIT} active boards used ·{' '}
+                <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
+              </p>
+            )}
             <div className="flex flex-col gap-1.5">
               <span className="text-text-3 text-xs font-medium">Board format:</span>
               <div className="flex flex-wrap gap-2">

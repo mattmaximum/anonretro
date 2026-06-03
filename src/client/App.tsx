@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './components/LandingPage.js'
 import BoardPage from './components/BoardPage.js'
+import Dashboard from './components/Dashboard.js'
 import PrivacyPolicy from './components/PrivacyPolicy.js'
 import About from './components/About.js'
 import ErrorBoundary from './components/ErrorBoundary.js'
@@ -20,6 +21,7 @@ export default function App() {
             </ErrorBoundary>
           }
         />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/about" element={<About />} />
         <Route path="*" element={<LandingPage />} />

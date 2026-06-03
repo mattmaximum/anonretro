@@ -100,6 +100,16 @@ export const countActiveBoardsByOwner = db.prepare<[string]>(
   'SELECT COUNT(*) as count FROM boards WHERE owner_id = ? AND archived = 0'
 )
 
+export const getBoardsByOwner = db.prepare<[string]>(`
+  SELECT id, title, format, created_at, last_activity_at, archived
+  FROM boards WHERE owner_id = ?
+  ORDER BY last_activity_at DESC
+`)
+
+export const archiveBoard = db.prepare<[string, string]>(
+  'UPDATE boards SET archived = 1 WHERE id = ? AND owner_id = ?'
+)
+
 export const updateBoardActivity = db.prepare<[number, string]>(
   'UPDATE boards SET last_activity_at = ? WHERE id = ?'
 )

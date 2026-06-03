@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import boardRoutes from './routes/boards.js'
 import exportRoutes from './routes/export.js'
 import metricsRoutes from './routes/metrics.js'
+import meRoutes from './routes/me.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
 import db, { deleteExpiredBoards } from './db.js'
@@ -61,6 +62,7 @@ await fastify.register(websocket, {
 await fastify.register(boardRoutes)
 await fastify.register(exportRoutes)
 await fastify.register(metricsRoutes)
+await fastify.register(meRoutes)
 await fastify.register(wsRoutes)
 
 // Health check
@@ -81,7 +83,7 @@ if (IS_PROD) {
 // Periodic expired-board cleanup — runs every 6 hours regardless of traffic
 function purgeExpiredBoards() {
   try {
-    const cutoff = Math.floor(Date.now() / 1000) - 604800
+    const cutoff = Math.floor(Date.now() / 1000) - 2592000 // 30 days
     deleteExpiredBoards(cutoff)
   } catch (err) {
     console.error('Scheduled board purge error (non-fatal):', err)
