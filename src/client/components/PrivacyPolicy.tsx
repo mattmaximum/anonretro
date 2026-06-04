@@ -1,7 +1,12 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate()
+  useEffect(() => {
+    document.title = 'Privacy Policy — AnonRetro'
+    return () => { document.title = 'AnonRetro — Retrospectives without anchoring bias' }
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6 py-12">

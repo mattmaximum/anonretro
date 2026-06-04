@@ -14,6 +14,7 @@ module.exports = {
       DATABASE_PATH: '/var/data/anonretro/anonretro.db',
       ALLOWED_ORIGINS: 'https://anonretro.com,https://www.anonretro.com',
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+      CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY,
     },
   }],
 }

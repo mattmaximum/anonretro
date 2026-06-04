@@ -1,6 +1,8 @@
 # AnonRetro
 
-Real-time anonymous retrospective boards for engineering teams. Cards stay hidden from everyone — including the facilitator — until the reveal moment. Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools inspection and screen readers can't leak other people's cards.
+Built to eliminate anchoring bias in retrospectives. Cards stay hidden until the facilitator reveals them — so the first voice doesn't set the agenda.
+
+Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools and screen readers can't leak other people's cards. It's not CSS.
 
 Live at **[anonretro.com](https://anonretro.com)**
 
@@ -8,9 +10,9 @@ Live at **[anonretro.com](https://anonretro.com)**
 
 ## What it is
 
-A lightweight retro tool built to solve one specific problem: anchoring bias. When people can see each other's cards as they're written, they anchor on the first thing posted. AnonRetro eliminates that by keeping all cards hidden until the facilitator reveals them — at which point everyone sees everything at once.
+When people can see each other's cards as they're written, they anchor on the first thing posted. The loudest voice sets the tone before the conversation starts. AnonRetro eliminates that: everyone writes independently, cards are hidden until reveal, and everything surfaces at once.
 
-Participants join via a shared link with no account required. The facilitator (board creator) needs an account. Everything else is ephemeral by design.
+Participants join via a shared link with no account required. The facilitator (board creator) needs an account. Boards hard-delete after 30 days of inactivity.
 
 ---
 

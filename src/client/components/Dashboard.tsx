@@ -33,6 +33,11 @@ export default function Dashboard() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    document.title = 'My Boards — AnonRetro'
+    return () => { document.title = 'AnonRetro — Retrospectives without anchoring bias' }
+  }, [])
+
+  useEffect(() => {
     if (isLoaded && !isSignedIn) navigate('/')
   }, [isLoaded, isSignedIn, navigate])
 

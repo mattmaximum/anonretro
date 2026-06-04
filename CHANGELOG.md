@@ -13,9 +13,11 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ### What this is
 
-AnonRetro is a real-time anonymous retrospective tool for engineering teams. The core idea: cards stay hidden from everyone — including the facilitator — until the reveal moment, eliminating anchoring bias. Participants join via a shared link with no account required; only the board facilitator needs an account.
+AnonRetro is a real-time retrospective tool built to eliminate anchoring bias. Cards stay hidden until the facilitator reveals them — so the first voice doesn't set the agenda. Everyone writes independently, everything surfaces at once.
 
-Built as a side project to solve a real pain point, and designed to eventually cover its own hosting costs via a freemium model.
+Hiding is enforced at the data layer: the server sends `content: null` to non-owners over WebSocket. It's not CSS. Participants join via a shared link with no account required; only the facilitator needs one.
+
+Built as a side project to solve a real pain point, and designed to cover its own hosting costs via a freemium model ($29 lifetime license).
 
 ### Features at launch
 

@@ -1,7 +1,12 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function About() {
   const navigate = useNavigate()
+  useEffect(() => {
+    document.title = 'About — AnonRetro'
+    return () => { document.title = 'AnonRetro — Retrospectives without anchoring bias' }
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6 py-12">
@@ -18,28 +23,43 @@ export default function About() {
 
         <section className="flex flex-col gap-3">
           <p className="text-text-2 text-sm leading-relaxed">
-            AnonRetro was built to solve a frustration of mine. Most retrospective tools are
-            complicated, cost money, require accounts, and come loaded with friction. Nothing wrong
-            with that — but sometimes you just want something easy and free, without writing a
-            business case or waiting for corporate approvals. You have things to do and projects
-            to ship.
+            AnonRetro was built to eliminate anchoring bias in retrospectives. When people can
+            see each other's cards as they're written, they anchor on the first thing posted —
+            the loudest voice sets the tone before the conversation starts.
           </p>
           <p className="text-text-2 text-sm leading-relaxed">
-            That's why I built AnonRetro. No accounts. No paywalls. Get your team into a room —
-            virtual or otherwise — and run a retro.
+            Cards stay hidden until the facilitator reveals them. Everyone writes independently.
+            Everything surfaces at once. No one can follow someone else's lead.
+          </p>
+          <p className="text-text-2 text-sm leading-relaxed">
+            The hiding is enforced at the data layer — the server sends <code className="text-text-1 bg-raised px-1 py-0.5 rounded text-xs">content: null</code> to
+            non-owners over WebSocket, so browser devtools and screen readers can't leak other
+            people's cards. It's not CSS.
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-text-1">How it works</h2>
+          <p className="text-text-2 text-sm leading-relaxed">
+            Facilitators create a board and share the link. Participants join instantly — no
+            account, no setup. Cards stay hidden during the writing phase. When the facilitator
+            reveals, everything appears at once with a staggered animation.
+          </p>
+          <p className="text-text-2 text-sm leading-relaxed">
+            Free accounts support up to 3 active boards. A one-time $29 lifetime license removes
+            the limit. No subscriptions, no renewals.
           </p>
         </section>
 
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Keep it running</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            AnonRetro is free to use, but it does cost money to host. If it helped you out in a
-            pinch, consider contributing — a cup of coffee keeps the lights on for a month.
+            AnonRetro costs about $250/year to host. The lifetime license covers that and supports
+            continued development. One person built this — your contribution keeps it alive.
           </p>
-          <p className="text-text-3 text-sm italic">Donation link coming soon.</p>
         </section>
 
-        <p className="text-text-3 text-sm">Made with ♥ — Matt</p>
+        <p className="text-text-3 text-sm">Made by Matt — <a href="mailto:mattmcx@gmail.com" className="hover:text-text-2 transition-colors">mattmcx@gmail.com</a></p>
       </div>
     </div>
   )
