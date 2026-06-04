@@ -1,8 +1,8 @@
 # AnonRetro
 
-Built to eliminate anchoring bias in retrospectives. Cards stay hidden until the facilitator reveals them — so the first voice doesn't set the agenda.
+You create an account, share a link, and your team joins instantly — no sign-up and everyone's anonymous.
 
-Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools and screen readers can't leak other people's cards. It's not CSS.
+Cards stay hidden until the facilitator reveals them, so the first voice doesn't set the agenda. Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools and screen readers can't leak other people's cards. It's not CSS.
 
 Live at **[anonretro.com](https://anonretro.com)**
 

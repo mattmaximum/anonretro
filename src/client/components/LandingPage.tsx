@@ -90,7 +90,7 @@ export default function LandingPage() {
           <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
           <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
         </div>
-        <p className="text-text-2 mt-2 text-sm">You create an account, share a link, and your team joins instantly — no sign-up, no name. Each participant gets an anonymous identity so there's no anchoring and no bias.</p>
+        <p className="text-text-2 mt-2 text-sm">You create an account, share a link, and your team joins instantly — no sign-up and everyone's anonymous.</p>
       </div>
 
       {/* Create a new board */}
