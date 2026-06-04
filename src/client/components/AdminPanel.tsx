@@ -58,6 +58,18 @@ function formatDuration(seconds: number): string {
   return s === 0 ? `${m}m` : `${m}m ${s}s`
 }
 
+function downloadExport(boardId: string, adminToken: string, fmt: 'csv' | 'json' | 'md') {
+  const url = `/api/boards/${boardId}/export.${fmt}`
+  fetch(url, { headers: { 'x-admin-token': adminToken } })
+    .then(r => r.blob())
+    .then(b => {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(b)
+      a.setAttribute('download', `retro-${boardId}.${fmt}`)
+      a.click()
+    })
+}
+
 export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boardId, onSend, onShare }: Props) {
   const [duration, setDuration] = useState(30)  // seconds
   const [label, setLabel] = useState('')
@@ -209,26 +221,19 @@ export default function AdminPanel({ adminToken, blurEnabled, locked, timer, boa
         </div>
 
         {/* Export */}
-        <div className="border-t border-border pt-3">
-          <a
-            href={`/api/boards/${boardId}/export.csv`}
-            download
-            onClick={e => {
-              const url = `/api/boards/${boardId}/export.csv`
-              e.preventDefault()
-              const a = document.createElement('a')
-              a.href = url
-              a.setAttribute('download', `retro-${boardId}.csv`)
-              const headers = new Headers({ 'x-admin-token': adminToken })
-              fetch(url, { headers }).then(r => r.blob()).then(b => {
-                a.href = URL.createObjectURL(b)
-                a.click()
-              })
-            }}
-            className="block text-center text-text-2 hover:text-text-1 text-xs py-1.5 rounded border border-border transition-colors"
-          >
-            Export CSV
-          </a>
+        <div className="border-t border-border pt-3 space-y-1.5">
+          <p className="text-xs text-text-2">Export</p>
+          <div className="flex gap-1.5">
+            {(['csv', 'json', 'md'] as const).map(fmt => (
+              <button
+                key={fmt}
+                onClick={() => downloadExport(boardId, adminToken, fmt)}
+                className="flex-1 text-center text-text-2 hover:text-text-1 text-xs py-1.5 rounded border border-border transition-colors uppercase tracking-wide"
+              >
+                {fmt}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Danger zone */}
