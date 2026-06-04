@@ -69,10 +69,15 @@ await fastify.register(webhookRoutes)
 await fastify.register(clerkProxyRoutes)
 await fastify.register(wsRoutes)
 
-// Health check
-fastify.get('/api/health', async () => {
-  const { count } = db.prepare('SELECT COUNT(*) as count FROM boards').get() as { count: number }
-  return { status: 'ok', boards: count, uptime: process.uptime() }
+// Health check — exempt from rate limiting so monitoring IPs never trip it
+fastify.get('/api/health', { config: { rateLimit: false } }, async (_req, reply) => {
+  try {
+    const { count } = db.prepare('SELECT COUNT(*) as count FROM boards').get() as { count: number }
+    return { status: 'ok', boards: count, uptime: process.uptime() }
+  } catch (err) {
+    reply.code(503)
+    return { status: 'error', reason: err instanceof Error ? err.message : 'db unavailable' }
+  }
 })
 
 // Serve built frontend in production
