@@ -9,6 +9,25 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.2.0] — 2026-06-03
+
+### Added
+
+- **Multi-format export** — facilitators can now export a board as CSV, JSON, or Markdown from the admin panel. All three formats include board title, format name, and export date. Cards are sorted by vote count (highest first) within each column.
+  - **CSV** — compatible with Excel/Sheets; includes BOM for correct UTF-8 rendering
+  - **JSON** — structured `{ board, columns[] }` payload; useful for piping into Notion, Linear, Jira, or internal tooling
+  - **Markdown** — `## Column` / `- card (N votes) — author` structure; paste directly into Confluence, GitHub Discussions, or a team Slack
+- **Vote sorting in exports** — highest-voted cards appear first within each column across all export formats
+- **Board metadata in exports** — board name, format, and export date included in all formats so exported files are self-contained
+
+### Changed
+
+- Export section in the admin panel replaced with a `CSV / JSON / MD` button row
+- `/api/health` exempt from rate limiting so uptime monitoring IPs cannot accidentally trip it
+- `/api/health` returns `503` with `{ status: "error", reason: "..." }` on DB failure (was an unhandled 500); UptimeRobot keyword checks now fail correctly on DB outage
+
+---
+
 ## [0.1.0] — 2026-06-03
 
 ### What this is

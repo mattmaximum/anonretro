@@ -88,7 +88,7 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 - Timer: set duration (1–60 min) with optional label, pause, resume, cancel
 - Timer is server-led — clients count down from `expires_at`, no server ticks broadcast
 - Timer survives server restarts (`restoreTimers()` re-arms from SQLite on startup)
-- Export all cards to CSV (column, content, vote count, author)
+- Export all cards to **CSV**, **JSON**, or **Markdown** — cards sorted by votes within each column, board name and format included in every export
 - Rename board in real time — title change broadcasts to all participants instantly
 - Delete board (hard delete, immediate)
 
