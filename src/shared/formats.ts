@@ -9,6 +9,8 @@ export const FORMATS: RetroFormat[] = [
   { id: 'mad-sad-glad',        name: 'Mad / Sad / Glad',        columns: ['Mad', 'Sad', 'Glad'] },
   { id: '4ls',                 name: '4Ls',                     columns: ['Liked', 'Learned', 'Lacked', 'Longed For'] },
   { id: 'start-stop-continue', name: 'Start / Stop / Continue', columns: ['Start', 'Stop', 'Continue'] },
+  { id: 'sailboat',            name: 'Sailboat',                columns: ['⛵ Wind/Sails', '⚓ Anchors', '🪨 Rocks', '☀️ Sun/Island'] },
+  { id: 'rose-bud-thorn',      name: 'Rose, Bud, Thorn',        columns: ['🌹 Rose', '🌱 Bud', '🌵 Thorn'] },
 ]
 
 export const DEFAULT_FORMAT = FORMATS[0]

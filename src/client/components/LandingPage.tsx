@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth, useUser, SignInButton, UserButton } from '@clerk/react'
 import { FORMATS } from '@shared/formats'
@@ -18,6 +18,8 @@ export default function LandingPage() {
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [isPro, setIsPro] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [formatOpen, setFormatOpen] = useState(false)
+  const formatRef = useRef<HTMLDivElement>(null)
   const FREE_LIMIT = 3
 
   useEffect(() => {
@@ -30,6 +32,16 @@ export default function LandingPage() {
         .catch(() => {})
     })
   }, [isSignedIn])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (formatRef.current && !formatRef.current.contains(e.target as Node)) {
+        setFormatOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   async function handleCreate() {
     if (!title.trim()) { setError('Board title is required.'); return }
@@ -137,20 +149,39 @@ export default function LandingPage() {
             )}
             <div className="flex flex-col gap-1.5">
               <span className="text-text-3 text-xs font-medium">Board format:</span>
-              <div className="flex flex-wrap gap-2">
-              {FORMATS.map(f => (
+              <div className="relative max-w-xs" ref={formatRef}>
                 <button
-                  key={f.id}
-                  onClick={() => setFormat(f.id)}
-                  className={`px-3 py-1 rounded text-xs transition-colors ${
-                    format === f.id
-                      ? 'bg-accent-muted text-accent font-medium'
-                      : 'text-text-2 hover:bg-raised hover:text-text-1'
-                  }`}
+                  type="button"
+                  onClick={() => setFormatOpen(o => !o)}
+                  className="flex items-center justify-between gap-3 w-full bg-raised border border-border rounded px-3 py-2 text-sm text-text-1 hover:border-border-active transition-colors"
                 >
-                  {f.name}
+                  <span>{FORMATS.find(f => f.id === format)?.name}</span>
+                  <svg
+                    width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    className={`flex-shrink-0 transition-transform duration-150 ${formatOpen ? 'rotate-180' : ''}`}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </button>
-              ))}
+                {formatOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-20 py-1 overflow-hidden">
+                    {FORMATS.map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => { setFormat(f.id); setFormatOpen(false) }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                          format === f.id
+                            ? 'text-accent font-medium bg-accent-muted'
+                            : 'text-text-1 hover:bg-raised'
+                        }`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </>
