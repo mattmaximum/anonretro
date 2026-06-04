@@ -110,7 +110,7 @@ export default function LandingPage() {
         ) : (
           <>
             <div className="flex items-center gap-3">
-              <h2 className="font-semibold text-text-1 flex-shrink-0">Name your board</h2>
+              <h2 className="font-semibold text-text-1 flex-shrink-0">Board name</h2>
               <input
                 type="text"
                 value={title}
@@ -138,15 +138,6 @@ export default function LandingPage() {
             ) : error ? (
               <p className="text-danger text-sm">{error}</p>
             ) : null}
-            {!isPro && activeCount !== null && (
-              <p className="text-text-3 text-xs">
-                {activeCount} of {FREE_LIMIT} active boards used ·{' '}
-                <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
-                {activeCount >= FREE_LIMIT && (
-                  <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
-                )}
-              </p>
-            )}
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-text-1 flex-shrink-0">Pick a format</h2>
               <div className="relative group flex-shrink-0">
@@ -195,6 +186,15 @@ export default function LandingPage() {
                 )}
               </div>
             </div>
+            {!isPro && activeCount !== null && (
+              <p className="text-text-3 text-xs">
+                {activeCount} of {FREE_LIMIT} active boards used ·{' '}
+                <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
+                {activeCount >= FREE_LIMIT && (
+                  <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
+                )}
+              </p>
+            )}
           </>
         )}
       </div>
