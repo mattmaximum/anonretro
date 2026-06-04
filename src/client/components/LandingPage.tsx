@@ -110,7 +110,7 @@ export default function LandingPage() {
         ) : (
           <>
             <div className="flex items-center gap-3">
-              <h2 className="font-semibold text-text-1 flex-shrink-0">Create a board</h2>
+              <h2 className="font-semibold text-text-1 flex-shrink-0">Name your board</h2>
               <input
                 type="text"
                 value={title}
@@ -147,9 +147,20 @@ export default function LandingPage() {
                 )}
               </p>
             )}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-text-3 text-xs font-medium">Board format:</span>
-              <div className="relative max-w-xs" ref={formatRef}>
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-text-1 flex-shrink-0">Pick a format</h2>
+              <div className="relative group flex-shrink-0">
+                <Link
+                  to="/formats"
+                  className="w-4 h-4 rounded-full border border-border text-text-3 text-[10px] font-semibold flex items-center justify-center hover:border-border-active hover:text-text-1 transition-colors"
+                >
+                  ?
+                </Link>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-surface border border-border rounded text-xs text-text-1 whitespace-nowrap shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                  Help me choose
+                </div>
+              </div>
+              <div className="relative" ref={formatRef}>
                 <button
                   type="button"
                   onClick={() => setFormatOpen(o => !o)}
