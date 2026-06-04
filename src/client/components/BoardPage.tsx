@@ -380,16 +380,16 @@ export default function BoardPage() {
           <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
             {fmt.columns.map(col => (
               <Column
-                key={col}
-                name={col}
-                cards={cards.filter(c => c.column_id === col)}
+                key={col.id}
+                name={col.label}
+                cards={cards.filter(c => c.column_id === col.id)}
                 revealedIds={revealedIds}
                 revealSequence={revealSequence}
                 myVotes={myVotes}
                 locked={boardLocked}
                 expandedCardId={expandedCardId}
                 onExpandCard={setExpandedCardId}
-                onAddCard={content => send({ type: 'card:add', column_id: col, content })}
+                onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
                 onVote={cardId => {
                   setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
                   send({ type: 'vote:toggle', card_id: cardId })
@@ -404,10 +404,10 @@ export default function BoardPage() {
           <div className="md:hidden flex flex-col gap-4">
             <div className="flex gap-1 border-b border-border">
               {fmt.columns.map((col, i) => {
-                const colUnread = (unread[col] ?? 0)
+                const colUnread = (unread[col.id] ?? 0)
                 return (
                   <button
-                    key={col}
+                    key={col.id}
                     onClick={() => setActiveTab(i)}
                     className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
                       activeTab === i
@@ -415,7 +415,7 @@ export default function BoardPage() {
                         : 'border-transparent text-text-2 hover:text-text-1'
                     }`}
                   >
-                    {col}
+                    {col.label}
                     {colUnread > 0 && (
                       <span className="bg-danger text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                         {colUnread > 9 ? '9+' : colUnread}
@@ -427,15 +427,15 @@ export default function BoardPage() {
             </div>
 
             <Column
-              name={fmt.columns[activeTab]}
-              cards={cards.filter(c => c.column_id === fmt.columns[activeTab])}
+              name={fmt.columns[activeTab].label}
+              cards={cards.filter(c => c.column_id === fmt.columns[activeTab].id)}
               revealedIds={revealedIds}
               revealSequence={revealSequence}
               myVotes={myVotes}
               locked={boardLocked}
               expandedCardId={expandedCardId}
               onExpandCard={setExpandedCardId}
-              onAddCard={content => send({ type: 'card:add', column_id: fmt.columns[activeTab], content })}
+              onAddCard={content => send({ type: 'card:add', column_id: fmt.columns[activeTab].id, content })}
               onVote={cardId => {
                 setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
                 send({ type: 'vote:toggle', card_id: cardId })

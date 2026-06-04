@@ -115,10 +115,10 @@ function getBoardData(req: any, reply: any): BoardData | null {
     identityMap.set(p.participant_token, `${p.color} ${p.animal}`)
   }
 
-  const columns = format.columns.map(colName => ({
-    name: colName,
+  const columns = format.columns.map(col => ({
+    name: col.label,
     cards: cards
-      .filter(c => c.column_id === colName)
+      .filter(c => c.column_id === col.id)
       .sort((a, b) => b.votes - a.votes)
       .map(c => ({
         content: c.content as string,

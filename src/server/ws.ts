@@ -254,7 +254,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           if (!checkRateLimit(token)) { send(ws, { type: 'error', code: 'RATE_LIMITED' }); return }
           const fmt = getFormat(board.format)
-          if (!fmt.columns.includes(msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (!fmt.columns.some(c => c.id === msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           const id = nanoid(21)
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
