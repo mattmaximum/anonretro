@@ -121,11 +121,45 @@ export default function Dashboard() {
 
   const activeBoards = data.boards.filter(b => b.archived === 0)
 
+  const DISMISS_KEY = 'anonretro_upgrade_dismissed'
+  const DISMISS_TTL = 7 * 24 * 60 * 60 * 1000
+  const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) ?? 0)
+  const isDismissed = Date.now() - dismissedAt < DISMISS_TTL
+  const showUpgradeBanner = !data.isPro && data.activeCount >= 2 && !isDismissed
+
+  function dismissBanner() {
+    localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    // force re-render by triggering a state update
+    setData(d => d ? { ...d } : d)
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center p-6 gap-8 pt-12">
       {showUpgrade && (
         <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
       )}
+
+      {showUpgradeBanner && (
+        <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-text-1 text-sm font-medium">
+              {data.activeCount} of {data.limit} free boards used
+            </p>
+            <p className="text-text-3 text-xs mt-0.5">
+              One person built this. $29 once → unlimited boards, forever.{' '}
+              <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade</button>
+            </p>
+          </div>
+          <button
+            onClick={dismissBanner}
+            className="text-text-3 hover:text-text-2 text-lg leading-none flex-shrink-0 transition-colors"
+            title="Dismiss for 7 days"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-2xl flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-text-1 tracking-tight">My boards</h1>
