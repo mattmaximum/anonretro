@@ -70,13 +70,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_participants_board ON participants(board_id);
   CREATE INDEX IF NOT EXISTS idx_votes_card ON votes(card_id);
   CREATE INDEX IF NOT EXISTS idx_boards_activity ON boards(last_activity_at);
-  CREATE INDEX IF NOT EXISTS idx_boards_write ON boards(last_write_at);
 `)
 
 // Migrations for columns added after initial schema
 try { db.exec("ALTER TABLE boards ADD COLUMN title TEXT NOT NULL DEFAULT ''") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN locked INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN last_write_at INTEGER") } catch { /* already exists */ }
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_boards_write ON boards(last_write_at)") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN owner_id TEXT") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN archived INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 
