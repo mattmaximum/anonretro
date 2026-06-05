@@ -42,11 +42,6 @@ export default async function clerkProxyRoutes(fastify: FastifyInstance) {
   const upstreamHost = new URL(upstream).host
   fastify.log.info(`Clerk proxy: /clerk → ${upstream}`)
 
-  // Accept any content-type (Clerk uses application/x-www-form-urlencoded for some requests)
-  fastify.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => {
-    done(null, body)
-  })
-
   fastify.all('/clerk/*', async (req, reply) => {
     const wildcard = (req.params as Record<string, string>)['*']
     const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''

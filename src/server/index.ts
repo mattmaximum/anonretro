@@ -61,6 +61,13 @@ await fastify.register(websocket, {
   },
 })
 
+// Accept any content-type as raw buffer for unrecognised types (needed by Clerk proxy
+// which forwards application/x-www-form-urlencoded requests). Fires only when no
+// more-specific parser is registered, so application/json routes are unaffected.
+fastify.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => {
+  done(null, body)
+})
+
 // Routes
 await fastify.register(boardRoutes)
 await fastify.register(exportRoutes)
