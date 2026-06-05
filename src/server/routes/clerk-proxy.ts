@@ -49,7 +49,7 @@ export default async function clerkProxyRoutes(fastify: FastifyInstance) {
 
     const forwardHeaders: Record<string, string> = { host: upstreamHost }
     for (const [key, val] of Object.entries(req.headers)) {
-      if (SKIP_HEADERS.has(key)) continue
+      if (SKIP_HEADERS.has(key) || val === undefined) continue
       forwardHeaders[key] = Array.isArray(val) ? val.join(', ') : val
     }
 
