@@ -23,6 +23,7 @@ rsync -a \
   --exclude=dist \
   --exclude='.git' \
   --exclude=data \
+  --exclude='.env' \
   "$REPO_DIR/" "$RELEASE_DIR/"
 
 # 3. Install dependencies and build inside the release directory

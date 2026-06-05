@@ -15,6 +15,8 @@ module.exports = {
       ALLOWED_ORIGINS: 'https://anonretro.com,https://www.anonretro.com',
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
       CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY,
+      METRICS_USER: process.env.METRICS_USER,
+      METRICS_PASSWORD: process.env.METRICS_PASSWORD,
     },
   }],
 }
