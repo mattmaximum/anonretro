@@ -55,7 +55,7 @@ export default async function clerkProxyRoutes(fastify: FastifyInstance) {
 
     const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
     const body: BodyInit | undefined = hasBody && req.body != null
-      ? req.body as Buffer
+      ? req.body as unknown as BodyInit
       : undefined
 
     try {
