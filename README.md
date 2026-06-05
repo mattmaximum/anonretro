@@ -150,12 +150,13 @@ src/
 | Database | SQLite (better-sqlite3, WAL mode) |
 | Frontend | React 18 + Vite |
 | Styling | Tailwind CSS v3, Inter font |
-| Auth | Clerk (@clerk/backend, @clerk/react) |
-| Payments | Lemon Squeezy |
 | Types | TypeScript throughout (shared client/server types) |
 | Tests | Vitest (unit tests for eviction, blur, vote, timer, join logic) |
 | Process manager | pm2 (fork mode — required for ESM + `import.meta.url`) |
-| Reverse proxy | nginx + Let's Encrypt |
+| Reverse proxy | nginx (origin) + Cloudflare (TLS, DDoS, caching) |
+| Hosting | Hetzner VPS (2 GB RAM, Ubuntu) |
+| Auth | Clerk (JWT verification, email/password, webhooks) |
+| Payments | Lemon Squeezy (Merchant of Record — handles VAT/GST globally) |
 
 ### Key design decisions
 
@@ -182,12 +183,73 @@ src/
 
 ---
 
-## Deploy
+## Infrastructure & deployment
 
-See [`deploy/README.md`](deploy/README.md) for the full deployment guide.
+### Hosting
 
-Two environments on the same VPS — prod (`anonretro.com`) and staging (`staging.anonretro.com`).
-SSL is handled by Cloudflare. Both use the same parameterized scripts.
+Runs on a single Hetzner VPS (2 GB RAM, Ubuntu). Cloudflare sits in front for
+DDoS protection, TLS termination, and caching — the origin speaks plain HTTP to Cloudflare,
+which handles HTTPS to the browser. nginx reverse-proxies to two Node.js processes: prod on
+port 3000 (`anonretro.com`) and staging on port 3001 (`staging.anonretro.com`).
+
+### Deployment pipeline
+
+Capistrano-style release management, implemented as a single parameterized bash script:
+
+1. `git pull` the target branch into a shared repo directory
+2. `rsync` source into a new timestamped release directory (e.g. `releases/20260605_211125/`)
+3. `npm ci` + build (TypeScript + Vite — `VITE_*` env vars baked into the JS bundle here)
+4. Atomically switch the `current` symlink to the new release
+5. `pm2 reload` for a graceful zero-downtime handoff
+6. Smoke-test `GET /api/health` — auto-rolls back to the previous release on failure
+7. Prune releases older than the 5 most recent
+
+Rollback re-points the symlink and reloads pm2 — no rebuild, ~5 seconds.
+
+### Two-environment setup
+
+Both environments live on the same VPS and share the same deploy scripts. The branch
+and port are the only differences between them:
+
+| | Prod | Staging |
+|---|---|---|
+| Domain | `anonretro.com` | `staging.anonretro.com` |
+| Branch | `main` | `staging` |
+| Port | 3000 | 3001 |
+| Clerk keys | `pk_live_` / `sk_live_` | `pk_test_` / `sk_test_` |
+| Clerk proxy | Enabled (`VITE_CLERK_PROXY_URL=/clerk`) | Disabled |
+| Auth gate | None | nginx basic auth |
+
+Changes flow staging → prod: merge `staging` into `main`, push, deploy prod.
+
+### Identity (Clerk)
+
+Facilitator sign-up and sign-in use [Clerk](https://clerk.com). Clerk JWTs are verified
+server-side on every authenticated request (`@clerk/backend`). Participants never need an
+account — they get a random color+animal identity on join.
+
+On production, Clerk traffic is routed through a first-party proxy at `/clerk/*` rather
+than Clerk's own CDN subdomain. This keeps auth requests indistinguishable from first-party
+traffic and avoids ad-blocker interference. The proxy is a custom Fastify route that uses
+Node's `fetch` with redirect-following and rewrites `Set-Cookie` domain attributes so
+session cookies scope correctly to `anonretro.com`.
+
+### Databases
+
+SQLite files live at fixed paths outside the release directories
+(`/var/data/anonretro/anonretro.db` and `staging.db`) so they survive deploys and rollbacks.
+WAL mode enables concurrent reads alongside the single writer.
+
+### Payments
+
+[Lemon Squeezy](https://lemonsqueezy.com) handles the $29 lifetime license. They're the
+Merchant of Record, which means they handle VAT, GST, and sales tax globally — no tax
+infrastructure required on this end. Webhooks update the user's `is_pro` flag in Clerk
+metadata.
+
+---
+
+See [`deploy/README.md`](deploy/README.md) for the full ops runbook.
 
 **Deploy staging:**
 ```bash
