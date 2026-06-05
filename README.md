@@ -182,20 +182,32 @@ src/
 
 ## Deploy
 
-See [`deploy/README.md`](deploy/README.md) for the full deployment guide (release-based deploy, rollback, PM2 config, nginx setup).
+See [`deploy/README.md`](deploy/README.md) for the full deployment guide.
 
-Quick reference for a fresh Ubuntu 22.04 VPS:
+Two environments on the same VPS — prod (`anonretro.com`) and staging (`staging.anonretro.com`).
+SSL is handled by Cloudflare. Both use the same parameterized scripts.
 
+**Deploy staging:**
 ```bash
-sudo bash deploy/setup.sh
-# set ALLOWED_ORIGINS, CLERK_SECRET_KEY in ecosystem.config.cjs / /etc/environment
-# set VITE_CLERK_PUBLISHABLE_KEY in /app/anonretro/repo/.env.local (baked in at build time)
-bash /app/anonretro/repo/deploy/deploy.sh
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/anonretro
-# edit nginx.conf to replace yourdomain.com
-sudo ln -s /etc/nginx/sites-available/anonretro /etc/nginx/sites-enabled/
-sudo certbot --nginx -d yourdomain.com
+bash /app/anonretro-staging/repo/deploy/deploy.sh staging
 ```
+
+**Promote staging → prod:**
+```bash
+# local
+git checkout main && git merge staging && git push origin main
+# server
+bash /app/anonretro/repo/deploy/deploy.sh prod
+```
+
+**Rollback:**
+```bash
+bash /app/anonretro/repo/deploy/rollback.sh prod        # prod, previous release
+bash /app/anonretro-staging/repo/deploy/rollback.sh staging   # staging, previous release
+bash /app/anonretro/repo/deploy/rollback.sh prod 2      # prod, specific release by index
+```
+
+For first-time staging setup see [`deploy/STAGING-SETUP.md`](deploy/STAGING-SETUP.md).
 
 ---
 
