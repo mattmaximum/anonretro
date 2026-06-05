@@ -1,18 +1,12 @@
 import type { FastifyInstance } from 'fastify'
-import httpProxy from '@fastify/http-proxy'
 
 /**
- * Proxies /clerk/* to Clerk's Frontend API so ad blockers can't distinguish
- * Clerk requests from first-party traffic.
- *
- * The upstream FAPI host is derived from the publishable key at startup —
- * no extra env var required. The key format is:
- *   pk_test_<base64(host + "$")>  or  pk_live_<base64(host + "$")>
+ * Proxies /clerk/* to Clerk's Frontend API so browser requests stay same-origin.
+ * Uses fetch with redirect:follow so Clerk's version-resolution 307s are handled
+ * server-side and never expose a cross-origin redirect to the browser.
  *
  * ClerkProvider must be configured with proxyUrl="/clerk" (see main.tsx).
- *
- * After deploying: go to Clerk Dashboard → Configure → Domains → set the
- * proxy URL to https://anonretro.com/clerk
+ * VITE_CLERK_PROXY_URL=/clerk must be set in .env so the build bakes it in.
  */
 
 function fapiUrlFromPublishableKey(key: string): string | null {
@@ -26,9 +20,13 @@ function fapiUrlFromPublishableKey(key: string): string | null {
   }
 }
 
+const SKIP_HEADERS = new Set([
+  'host', 'connection', 'transfer-encoding', 'keep-alive', 'content-length',
+])
+
 export default async function clerkProxyRoutes(fastify: FastifyInstance) {
   const publishableKey = process.env.CLERK_PUBLISHABLE_KEY
-    ?? process.env.VITE_CLERK_PUBLISHABLE_KEY // fallback for local dev
+    ?? process.env.VITE_CLERK_PUBLISHABLE_KEY
 
   if (!publishableKey) {
     fastify.log.warn('CLERK_PUBLISHABLE_KEY not set — Clerk proxy disabled')
@@ -41,12 +39,45 @@ export default async function clerkProxyRoutes(fastify: FastifyInstance) {
     return
   }
 
+  const upstreamHost = new URL(upstream).host
   fastify.log.info(`Clerk proxy: /clerk → ${upstream}`)
 
-  await fastify.register(httpProxy, {
-    upstream,
-    prefix: '/clerk',
-    rewritePrefix: '/',
-    http2: false,
+  fastify.all('/clerk/*', async (req, reply) => {
+    const wildcard = (req.params as Record<string, string>)['*']
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+    const targetUrl = `${upstream}/${wildcard}${qs}`
+
+    const forwardHeaders: Record<string, string> = { host: upstreamHost }
+    for (const [key, val] of Object.entries(req.headers)) {
+      if (SKIP_HEADERS.has(key)) continue
+      forwardHeaders[key] = Array.isArray(val) ? val.join(', ') : val
+    }
+
+    const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
+    let body: BodyInit | undefined
+    if (hasBody && req.body != null) {
+      body = JSON.stringify(req.body)
+      forwardHeaders['content-type'] = 'application/json'
+    }
+
+    try {
+      const response = await fetch(targetUrl, {
+        method: req.method,
+        headers: forwardHeaders,
+        body,
+        redirect: 'follow',
+      })
+
+      const SKIP_RES = new Set(['content-encoding', 'transfer-encoding', 'connection'])
+      response.headers.forEach((val, key) => {
+        if (!SKIP_RES.has(key)) reply.header(key, val)
+      })
+
+      reply.status(response.status)
+      return reply.send(Buffer.from(await response.arrayBuffer()))
+    } catch (err) {
+      fastify.log.error({ err, targetUrl }, 'Clerk proxy error')
+      return reply.status(502).send({ error: 'Clerk proxy unavailable' })
+    }
   })
 }
