@@ -69,6 +69,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cards_board ON cards(board_id);
   CREATE INDEX IF NOT EXISTS idx_participants_board ON participants(board_id);
   CREATE INDEX IF NOT EXISTS idx_votes_card ON votes(card_id);
+  CREATE INDEX IF NOT EXISTS idx_boards_activity ON boards(last_activity_at);
+  CREATE INDEX IF NOT EXISTS idx_boards_write ON boards(last_write_at);
 `)
 
 // Migrations for columns added after initial schema
@@ -105,6 +107,10 @@ export const getBoardsByOwner = db.prepare<[string]>(`
   FROM boards WHERE owner_id = ?
   ORDER BY last_activity_at DESC
 `)
+
+export const getBoardByIdAndOwner = db.prepare<[string, string]>(
+  'SELECT 1 FROM boards WHERE id = ? AND owner_id = ?'
+)
 
 export const archiveBoard = db.prepare<[string, string]>(
   'UPDATE boards SET archived = 1 WHERE id = ? AND owner_id = ?'

@@ -7,12 +7,13 @@ import {
   recordDailyBoardCreated, recordDailyParticipantJoined, deleteBoardFull,
   deleteExpiredBoards, getUserByClerkId, insertUser, countActiveBoardsByOwner,
 } from '../db.js'
-import { IDENTITY_POOL, EVICTION_LIMIT } from '../../shared/constants.js'
+import { IDENTITY_POOL, EVICTION_LIMIT, BOARD_EXPIRY_SECONDS } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
 import { broadcast } from '../ws.js'
 import { getAuthUserId } from '../lib/auth.js'
+import { utcDate } from '../lib/utils.js'
 
-const FREE_BOARD_LIMIT = 3
+export const FREE_BOARD_LIMIT = 3
 
 export default async function boardRoutes(fastify: FastifyInstance) {
   // POST /api/boards — create a new board (requires auth)
@@ -60,7 +61,7 @@ export default async function boardRoutes(fastify: FastifyInstance) {
 
     const now = Math.floor(Date.now() / 1000)
     const boardRow = board as { id: string }
-    if (now - ((board as any).last_activity_at) > 2592000) { // 30 days
+    if (now - ((board as any).last_activity_at) > BOARD_EXPIRY_SECONDS) {
       return reply.status(410).send({ error: 'Board has expired.' })
     }
 
@@ -112,14 +113,10 @@ export default async function boardRoutes(fastify: FastifyInstance) {
   })
 }
 
-function utcDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function runEviction() {
   try {
     // 1. Time-based: purge boards inactive for 7+ days
-    const cutoff = Math.floor(Date.now() / 1000) - 2592000 // 30 days
+    const cutoff = Math.floor(Date.now() / 1000) - BOARD_EXPIRY_SECONDS
     deleteExpiredBoards(cutoff)
 
     // 2. Safety net: if still over the hard cap, evict oldest

@@ -2,8 +2,11 @@ import type { FastifyInstance } from 'fastify'
 import {
   getBoardsByOwner, countActiveBoardsByOwner,
   getUserByClerkId, insertUser, updateBoardTitle, deleteBoardFull,
+  getBoardByIdAndOwner,
 } from '../db.js'
 import { getAuthUserId } from '../lib/auth.js'
+import { FREE_BOARD_LIMIT } from './boards.js'
+import { broadcast } from '../ws.js'
 
 export default async function meRoutes(fastify: FastifyInstance) {
   // GET /api/me/boards — list all boards owned by the current user
@@ -17,7 +20,7 @@ export default async function meRoutes(fastify: FastifyInstance) {
     const user = getUserByClerkId.get(clerkUserId) as { is_pro: number } | undefined
     const isPro = user?.is_pro === 1
 
-    return { boards, activeCount, isPro, limit: 3 }
+    return { boards, activeCount, isPro, limit: FREE_BOARD_LIMIT }
   })
 
   // DELETE /api/me/boards/:id — hard delete a board and all its data
@@ -26,11 +29,11 @@ export default async function meRoutes(fastify: FastifyInstance) {
     if (!clerkUserId) return reply.status(401).send({ error: 'Unauthorized.' })
 
     const { id } = req.params as { id: string }
-    const boards = getBoardsByOwner.all(clerkUserId) as Array<{ id: string }>
-    if (!boards.find(b => b.id === id)) {
+    if (!getBoardByIdAndOwner.get(id, clerkUserId)) {
       return reply.status(404).send({ error: 'Board not found.' })
     }
 
+    broadcast(id, { type: 'board_deleted' })
     deleteBoardFull(id)
     return reply.status(204).send(null)
   })
@@ -44,8 +47,7 @@ export default async function meRoutes(fastify: FastifyInstance) {
     const { title } = req.body as { title?: string }
     if (typeof title !== 'string') return reply.status(400).send({ error: 'title required.' })
 
-    const boards = getBoardsByOwner.all(clerkUserId) as Array<{ id: string }>
-    if (!boards.find(b => b.id === id)) {
+    if (!getBoardByIdAndOwner.get(id, clerkUserId)) {
       return reply.status(404).send({ error: 'Board not found.' })
     }
 

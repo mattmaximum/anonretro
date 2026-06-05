@@ -11,12 +11,9 @@ import { nanoid } from 'nanoid'
 import { InboundSchema } from '../shared/messages.js'
 import type { OutboundMessage, CardData, ParticipantData } from '../shared/messages.js'
 import { getFormat } from '../shared/formats.js'
-import { CARD_MAX_LENGTH } from '../shared/constants.js'
+import { CARD_MAX_LENGTH, BOARD_EXPIRY_SECONDS } from '../shared/constants.js'
 import { armTimer, disarmTimer } from './timer.js'
-
-function utcDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { utcDate } from './lib/utils.js'
 
 // ── Registries ────────────────────────────────────────────────────────────────
 
@@ -60,13 +57,13 @@ function send(ws: WebSocket, msg: OutboundMessage) {
 
 // ── Scramble helpers ──────────────────────────────────────────────────────────
 
-function idSeed(id: string): number {
+export function idSeed(id: string): number {
   let h = 0
   for (const c of id) h = Math.imul(31, h) + c.charCodeAt(0) | 0
   return Math.abs(h)
 }
 
-function scrambleWord(word: string, seed: number): string {
+export function scrambleWord(word: string, seed: number): string {
   const arr = word.split('')
   let s = seed
   for (let i = arr.length - 1; i > 0; i--) {
@@ -77,7 +74,7 @@ function scrambleWord(word: string, seed: number): string {
   return arr.join('')
 }
 
-function scrambleContent(content: string, cardId: string): string {
+export function scrambleContent(content: string, cardId: string): string {
   const seed = idSeed(cardId)
   const words = content.trim().split(/\s+/)
   const preview = words.slice(0, 7).map((w, i) => scrambleWord(w, seed + i))
@@ -86,7 +83,7 @@ function scrambleContent(content: string, cardId: string): string {
 
 // ── Per-recipient card shape ──────────────────────────────────────────────────
 
-function buildCard(
+export function buildCard(
   row: { id: string; column_id: string; content: string; creator_token: string; votes: number; created_at: number; _color?: string; _animal?: string },
   viewerToken: string,
   blurEnabled: boolean,
@@ -196,7 +193,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
     if (!boardRow) { ws.close(4004, 'Board not found'); return }
 
     const now = Math.floor(Date.now() / 1000)
-    if (now - boardRow.last_activity_at > 604800) { ws.close(4004, 'Board expired'); return }
+    if (now - boardRow.last_activity_at > BOARD_EXPIRY_SECONDS) { ws.close(4004, 'Board expired'); return }
 
     const participant = getParticipant.get(boardId, token) as any
     if (!participant) { ws.close(4001, 'Invalid token'); return }
@@ -396,6 +393,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
 
     ws.on('close', () => {
       if (participantSockets.get(token) === ws) participantSockets.delete(token)
+      rateLimits.delete(token)
       removeFromBoard(boardId, ws)
       broadcastPresence(boardId)
     })

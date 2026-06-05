@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { CARD_MAX_LENGTH } from './constants.js'
 
 // ── Inbound (client → server) ────────────────────────────────────────────────
 
 export const InboundSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('card:add'),    column_id: z.string(), content: z.string().min(1).max(500) }),
-  z.object({ type: z.literal('card:edit'),   id: z.string(),        content: z.string().min(1).max(500) }),
+  z.object({ type: z.literal('card:add'),    column_id: z.string(), content: z.string().min(1).max(CARD_MAX_LENGTH) }),
+  z.object({ type: z.literal('card:edit'),   id: z.string(),        content: z.string().min(1).max(CARD_MAX_LENGTH) }),
   z.object({ type: z.literal('card:delete'), id: z.string() }),
   z.object({ type: z.literal('vote:toggle'), card_id: z.string() }),
   z.object({ type: z.literal('admin:blur_toggle'),   admin_token: z.string() }),

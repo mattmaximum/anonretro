@@ -16,11 +16,11 @@ export default function LandingPage() {
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
   const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [freeLimit, setFreeLimit] = useState(3)
   const [isPro, setIsPro] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [formatOpen, setFormatOpen] = useState(false)
   const formatRef = useRef<HTMLDivElement>(null)
-  const FREE_LIMIT = 3
 
   useEffect(() => {
     if (!isSignedIn) return
@@ -28,7 +28,7 @@ export default function LandingPage() {
       if (!token) return
       fetch('/api/me/boards', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
-        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro) })
+        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro); setFreeLimit(d.limit) })
         .catch(() => {})
     })
   }, [isSignedIn])
@@ -188,9 +188,9 @@ export default function LandingPage() {
             </div>
             {!isPro && activeCount !== null && (
               <p className="text-text-3 text-xs">
-                {activeCount} of {FREE_LIMIT} active boards used ·{' '}
+                {activeCount} of {freeLimit} active boards used ·{' '}
                 <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
-                {activeCount >= FREE_LIMIT && (
+                {activeCount >= freeLimit && (
                   <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
                 )}
               </p>

@@ -58,6 +58,7 @@ echo "→ Smoke testing /api/health..."
 sleep 4
 if curl -sf http://localhost:3000/api/health > /dev/null; then
   echo "✓ Health check passed"
+  pm2 save
 else
   echo "✗ Health check failed — rolling back"
   if [ -n "$PREVIOUS_RELEASE" ]; then
