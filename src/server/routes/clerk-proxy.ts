@@ -67,8 +67,23 @@ export default async function clerkProxyRoutes(fastify: FastifyInstance) {
       })
 
       const SKIP_RES = new Set(['content-encoding', 'transfer-encoding', 'connection'])
+
+      // Strip Domain= from Set-Cookie so cookies scope to anonretro.com, not
+      // clerk.anonretro.com — otherwise the browser can't send them back through
+      // the proxy and Clerk sees every subsequent request as signed out.
+      const stripDomain = (c: string) =>
+        c.split(';').filter(p => !p.trim().toLowerCase().startsWith('domain=')).join(';')
+
+      const setCookies: string[] =
+        (response.headers as unknown as { getSetCookie?(): string[] }).getSetCookie?.()
+        ?? (response.headers.get('set-cookie') ? [response.headers.get('set-cookie')!] : [])
+
+      for (const cookie of setCookies) {
+        reply.header('set-cookie', stripDomain(cookie))
+      }
+
       response.headers.forEach((val, key) => {
-        if (!SKIP_RES.has(key)) reply.header(key, val)
+        if (!SKIP_RES.has(key) && key !== 'set-cookie') reply.header(key, val)
       })
 
       reply.status(response.status)
