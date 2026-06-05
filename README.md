@@ -50,7 +50,9 @@ npm start         # serve production build on :3000
 | `DATABASE_PATH` | No | SQLite file path (default: `./data/anonretro.db`) |
 | `ALLOWED_ORIGINS` | Production | Comma-separated allowed CORS/WS origins |
 | `CLERK_SECRET_KEY` | Production | Clerk backend key — auth is skipped if unset (dev mode) |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Production | Clerk frontend key — baked into the bundle at build time |
+| `CLERK_PUBLISHABLE_KEY` | Production | Clerk publishable key — used server-side to derive the FAPI URL for the proxy |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Production | Same key — baked into the frontend bundle at build time by Vite |
+| `VITE_CLERK_PROXY_URL` | Prod only | Set to `/clerk` on prod; omit on staging. Enables the Clerk anti-adblock proxy. |
 | `METRICS_USER` / `METRICS_PASSWORD` | No | Basic auth for `/api/metrics` |
 
 Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set — you can create boards freely without signing in.

@@ -133,6 +133,59 @@ curl -sf http://localhost:3001/api/health && echo "staging ok"
 
 ---
 
+## Clerk production setup
+
+Production auth runs through a custom first-party proxy (`src/server/routes/clerk-proxy.ts`)
+that forwards `/clerk/*` requests to Clerk's Frontend API. This keeps Clerk traffic
+indistinguishable from first-party requests and bypasses ad blockers.
+
+### DNS records (Cloudflare, DNS-only mode — no orange cloud)
+
+| Type | Name | Value |
+|---|---|---|
+| CNAME | `clerk` | `frontend-api.clerk.services` |
+| CNAME | `accounts` | `accounts.clerk.services` |
+| CNAME | `clkmail` | `mail.p8j7hj7bn9j0.clerk.services` |
+| CNAME | `clk._domainkey` | `dkim1.p8j7hj7bn9j0.clerk.services` |
+| CNAME | `clk2._domainkey` | `dkim2.p8j7hj7bn9j0.clerk.services` |
+
+All records must be **DNS-only** (grey cloud), not proxied. Clerk's verification checker
+queries authoritative nameservers directly; Cloudflare proxying breaks it.
+
+### Clerk dashboard (Configure → Domains)
+
+- `anonretro.com` — primary domain, Verified
+- `clerk.anonretro.com` — Frontend API CNAME, Optional (proxy takes precedence when set)
+- Proxy configuration — **leave deleted**. When the Clerk dashboard proxy is set, Clerk's
+  Cloudflare worker redirects all `clerk.anonretro.com` requests to the proxy URL. This
+  causes a 301 self-redirect loop in the server-side proxy. Without it, `clerk.anonretro.com`
+  serves content normally (307 version-resolution redirect, CORS open).
+- `accounts.anonretro.com` — account portal CNAME, Unverified (cosmetic — doesn't affect auth)
+
+### How the proxy works
+
+`clerk-proxy.ts` decodes the publishable key to get the FAPI host (`clerk.anonretro.com`),
+then uses Node's built-in `fetch` with `redirect: 'follow'` to proxy all `/clerk/*` requests:
+
+1. Browser → `anonretro.com/clerk/...` (same-origin, no CORS)
+2. Server fetch → `clerk.anonretro.com/...` (follows 307 version-resolution redirect server-side)
+3. Response returned to browser with `Domain=` stripped from `Set-Cookie` headers
+
+Stripping `Domain=clerk.anonretro.com` from cookies is critical — without it the browser
+scopes session cookies to the wrong host and treats every subsequent request as signed out.
+
+A root-level Fastify `addContentTypeParser('*', ...)` in `index.ts` is required so Clerk's
+`application/x-www-form-urlencoded` POST requests (session token refresh, sign-up) reach
+the proxy handler instead of returning 415.
+
+### Staging vs prod
+
+Staging uses Clerk dev keys (`pk_test_` / `sk_test_`) and **does not** set
+`VITE_CLERK_PROXY_URL`. Clerk dev instances don't support proxy URL configuration,
+so staging connects to the Clerk dev FAPI directly without going through the proxy.
+
+---
+
 ## Key implementation decisions
 
 | Decision | Why |
