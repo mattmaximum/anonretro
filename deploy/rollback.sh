@@ -1,7 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_DIR="/app/anonretro"
+ENV="${1:-prod}"
+
+case "$ENV" in
+  prod)
+    APP_DIR="/app/anonretro"
+    PORT=3000
+    PM2_APP_NAME="anonretro"
+    ECOSYSTEM_FILE="ecosystem.config.cjs"
+    ;;
+  staging)
+    APP_DIR="/app/anonretro-staging"
+    PORT=3001
+    PM2_APP_NAME="anonretro-staging"
+    ECOSYSTEM_FILE="ecosystem.staging.config.cjs"
+    ;;
+  *)
+    echo "Usage: $0 [prod|staging] [release_index]"
+    exit 1
+    ;;
+esac
+
 RELEASES_DIR="$APP_DIR/releases"
 CURRENT_LINK="$APP_DIR/current"
 
@@ -15,7 +35,7 @@ fi
 
 CURRENT=$(readlink "$CURRENT_LINK" 2>/dev/null | sed 's|/$||')
 
-echo "Releases on disk:"
+echo "Releases on disk ($ENV):"
 for i in "${!RELEASES[@]}"; do
   LABEL=""
   [ "${RELEASES[$i]}" = "$CURRENT" ] && LABEL="  ← active"
@@ -23,13 +43,11 @@ for i in "${!RELEASES[@]}"; do
 done
 echo ""
 
-# Determine target
-if [ -n "${1:-}" ]; then
-  # Explicit index passed as argument
-  IDX=$((${1} - 1))
+# Determine target — optional second argument is the release index
+if [ -n "${2:-}" ]; then
+  IDX=$(($2 - 1))
   TARGET="${RELEASES[$IDX]}"
 else
-  # Default: the release immediately before the current one
   TARGET=""
   for release in "${RELEASES[@]}"; do
     if [ "$release" != "$CURRENT" ]; then
@@ -49,15 +67,15 @@ if [ "$TARGET" = "$CURRENT" ]; then
   exit 0
 fi
 
-echo "Rolling back: $(basename "$CURRENT") → $(basename "$TARGET")"
+echo "Rolling back ($ENV): $(basename "$CURRENT") → $(basename "$TARGET")"
 ln -sfn "$TARGET" "$CURRENT_LINK"
-pm2 reload "$CURRENT_LINK/ecosystem.config.cjs" --update-env
+pm2 reload "$CURRENT_LINK/$ECOSYSTEM_FILE" --update-env
 
 echo "→ Waiting for process to reload..."
 sleep 4
-if curl -sf http://localhost:3000/api/health > /dev/null; then
+if curl -sf "http://localhost:$PORT/api/health" > /dev/null; then
   echo "✓ Rollback successful — $(basename "$TARGET") is live"
-  pm2 status anonretro
+  pm2 status "$PM2_APP_NAME"
 else
   echo "✗ Health check failed after rollback"
   exit 1
