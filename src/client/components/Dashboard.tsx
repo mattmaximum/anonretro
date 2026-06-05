@@ -19,6 +19,9 @@ interface MeBoards {
   limit: number
 }
 
+const DISMISS_KEY = 'anonretro_upgrade_dismissed'
+const DISMISS_TTL = 7 * 24 * 60 * 60 * 1000
+
 export default function Dashboard() {
   const { getToken, isLoaded } = useAuth()
   const { isSignedIn, user } = useUser()
@@ -31,6 +34,10 @@ export default function Dashboard() {
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
+  const [dismissed, setDismissed] = useState(() => {
+    const stored = Number(localStorage.getItem(DISMISS_KEY) ?? 0)
+    return Date.now() - stored < DISMISS_TTL
+  })
 
   useEffect(() => {
     document.title = 'My Boards — AnonRetro'
@@ -120,17 +127,11 @@ export default function Dashboard() {
   }
 
   const activeBoards = data.boards.filter(b => b.archived === 0)
-
-  const DISMISS_KEY = 'anonretro_upgrade_dismissed'
-  const DISMISS_TTL = 7 * 24 * 60 * 60 * 1000
-  const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) ?? 0)
-  const isDismissed = Date.now() - dismissedAt < DISMISS_TTL
-  const showUpgradeBanner = !data.isPro && data.activeCount >= 2 && !isDismissed
+  const showUpgradeBanner = !data.isPro && data.activeCount >= 2 && !dismissed
 
   function dismissBanner() {
     localStorage.setItem(DISMISS_KEY, String(Date.now()))
-    // force re-render by triggering a state update
-    setData(d => d ? { ...d } : d)
+    setDismissed(true)
   }
 
   return (
