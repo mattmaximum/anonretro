@@ -92,7 +92,8 @@ export default function LandingPage() {
           <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
           <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
         </div>
-        <p className="text-text-2 mt-2 text-sm">You create an account, share a link, and your team joins instantly — no sign-up and everyone's anonymous.</p>
+        <p className="text-text-3 mt-1 text-xs font-medium tracking-wide uppercase">Anonymous Retrospectives for Teams</p>
+        <p className="text-text-2 mt-2 text-sm">Cards stay hidden until you reveal them — no anchoring, no groupthink, no sign-up for participants.</p>
       </div>
 
       {/* Create a new board */}
