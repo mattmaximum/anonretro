@@ -8,6 +8,59 @@ Two environments on the same VPS: **prod** (`anonretro.com`, port 3000) and **st
 
 ---
 
+## Branching strategy
+
+```
+feat/xyz ──→ staging ──→ main
+                ↓            ↓
+     staging.anonretro   anonretro.com
+```
+
+**Three branches, two rules:**
+
+| Branch | Purpose | Who deploys it |
+|---|---|---|
+| `feat/xyz` | Isolated feature work — branched from `main` | Nobody (local only) |
+| `staging` | What the staging server runs — test before promoting | `deploy.sh staging` |
+| `main` | Production — only receives merges from `staging` | `deploy.sh prod` |
+
+**Rule 1 — All code flows through staging before main.**
+Never merge a feature branch directly into `main`. Always merge into `staging` first, deploy, verify, then merge `staging` → `main`.
+
+**Rule 2 — Hotfixes go to both.**
+If a fix must go straight to `main` (emergency), immediately sync staging afterward:
+```bash
+git push origin main:staging --force
+```
+
+**Standard workflow for a new feature:**
+
+```bash
+# 1. Branch from main
+git checkout main && git pull
+git checkout -b feat/my-feature
+
+# 2. Do the work, commit locally
+
+# 3. Merge into staging and test
+git checkout staging && git merge feat/my-feature
+git push origin staging
+# → deploy staging server and verify
+
+# 4. Promote to prod
+git checkout main && git merge staging
+git push origin main
+# → deploy prod server
+
+# 5. Clean up
+git branch -d feat/my-feature
+git push origin --delete feat/my-feature
+```
+
+After step 4, `staging` and `main` are identical — no drift.
+
+---
+
 ## Directory structure on the VPS
 
 ```
@@ -101,12 +154,16 @@ The script lists all releases with the active one marked before switching.
 ## Common operations
 
 ```bash
-# Deploy staging
+# Merge feature into staging and deploy
+git checkout staging && git merge feat/my-feature && git push origin staging
 bash /app/anonretro-staging/repo/deploy/deploy.sh staging
 
 # Promote staging → prod (local then server)
 git checkout main && git merge staging && git push origin main
 bash /app/anonretro/repo/deploy/deploy.sh prod
+
+# Sync staging to main after a hotfix (prevents drift)
+git push origin main:staging --force
 
 # Rollback staging (previous release)
 bash /app/anonretro-staging/repo/deploy/rollback.sh staging
