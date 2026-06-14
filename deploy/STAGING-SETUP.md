@@ -14,7 +14,20 @@ git checkout -b staging
 git push origin staging
 ```
 
-All feature branches merge here first for live testing, then get promoted to `main` for prod.
+**Branching strategy:**
+
+```
+feat/xyz ──→ staging ──→ main
+                ↓            ↓
+     staging.anonretro   anonretro.com
+```
+
+- Feature branches are created from `main` and merged into `staging` for testing
+- Once verified, `staging` is merged into `main` and deployed to prod
+- After the merge, `staging` and `main` are identical — no drift
+- Hotfixes committed directly to `main` must be synced back: `git push origin main:staging --force`
+
+See `deploy/README.md` for the full workflow.
 
 ---
 
@@ -67,12 +80,20 @@ In nano, make these changes:
 - Set `CLERK_SECRET_KEY` to your Clerk **dev instance** `sk_test_...` key
 - **Remove** the `VITE_CLERK_PROXY_URL` line entirely (staging connects to Clerk FAPI directly)
 - Leave `METRICS_USER` and `METRICS_PASSWORD` unchanged
+- Set `VITE_LS_CHECKOUT_ANNUAL`, `VITE_LS_CHECKOUT_LIFETIME`, `VITE_LS_CHECKOUT_UPGRADE` to the **test mode** Lemon Squeezy checkout URLs
+- Set `LEMON_SQUEEZY_WEBHOOK_SECRET` to the test mode signing secret (generate with `openssl rand -hex 20`)
+- Set `LEMON_SQUEEZY_LIFETIME_VARIANT_ID` and `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` to the test mode variant IDs
 
 Clerk dev instance keys come from [dashboard.clerk.com](https://dashboard.clerk.com) — switch
 to the Development instance to find them.
 
 **Note:** Do NOT set `VITE_CLERK_PROXY_URL` in the staging `.env`. The Clerk proxy is for
 prod only — dev instances don't support proxy URL configuration in the Clerk dashboard.
+
+**Note:** `VITE_LS_*` vars are baked into the frontend bundle at build time. Test mode and
+live mode have separate products with separate checkout URLs and variant IDs — staging uses
+test mode, prod uses live mode. Set up a separate webhook in LS test mode pointing to
+`https://staging.anonretro.com/api/webhooks/lemonsqueezy`.
 
 ---
 
@@ -132,16 +153,36 @@ bash /app/anonretro/repo/deploy/deploy.sh prod
 
 ---
 
-## Promoting staging to prod
-
-Once changes are tested on staging, merge to main and deploy prod:
+## Standard feature workflow
 
 ```bash
-# local
-git checkout main
-git merge staging
-git push origin main
+# 1. Create feature branch from main
+git checkout main && git pull
+git checkout -b feat/my-feature
 
-# server
+# 2. Do the work and commit
+
+# 3. Merge into staging and deploy for testing
+git checkout staging && git merge feat/my-feature
+git push origin staging
+bash /app/anonretro-staging/repo/deploy/deploy.sh staging
+
+# 4. Verify on staging.anonretro.com
+
+# 5. Promote to prod
+git checkout main && git merge staging
+git push origin main
 bash /app/anonretro/repo/deploy/deploy.sh prod
+
+# 6. Clean up feature branch
+git branch -d feat/my-feature
+git push origin --delete feat/my-feature
+```
+
+After step 5, `staging` and `main` are identical — no drift.
+
+**Hotfix direct to main** (emergency only):
+```bash
+# after committing fix to main and pushing
+git push origin main:staging --force   # keep staging in sync
 ```
