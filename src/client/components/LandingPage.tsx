@@ -93,7 +93,7 @@ export default function LandingPage() {
           <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
         </div>
         <p className="text-text-3 mt-1 text-xs font-medium tracking-wide uppercase">Anonymous Retrospectives for Teams</p>
-        <p className="text-text-2 mt-2 text-sm">Cards stay hidden until you reveal them — no anchoring, no groupthink, participants join instantly and anonymously — no account required.</p>
+        <p className="text-text-2 mt-2 text-sm">Participants join instantly and anonymously — no account required.<br />Cards stay hidden until you reveal them — no anchoring, no groupthink.</p>
       </div>
 
       {/* Create a new board */}
