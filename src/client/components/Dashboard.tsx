@@ -12,15 +12,15 @@ interface Board {
   archived: number
 }
 
+
 interface MeBoards {
   boards: Board[]
   activeCount: number
   isPro: boolean
+  isLifetime: boolean
   limit: number
 }
 
-const DISMISS_KEY = 'anonretro_upgrade_dismissed'
-const DISMISS_TTL = 7 * 24 * 60 * 60 * 1000
 
 export default function Dashboard() {
   const { getToken, isLoaded } = useAuth()
@@ -31,13 +31,10 @@ export default function Dashboard() {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [upgradeOnly, setUpgradeOnly] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
-  const [dismissed, setDismissed] = useState(() => {
-    const stored = Number(localStorage.getItem(DISMISS_KEY) ?? 0)
-    return Date.now() - stored < DISMISS_TTL
-  })
 
   useEffect(() => {
     document.title = 'My Boards — AnonRetro'
@@ -127,51 +124,42 @@ export default function Dashboard() {
   }
 
   const activeBoards = data.boards.filter(b => b.archived === 0)
-  const showUpgradeBanner = !data.isPro && data.activeCount >= 2 && !dismissed
-
-  function dismissBanner() {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()))
-    setDismissed(true)
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6 gap-8 pt-12">
       {showUpgrade && (
-        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
+        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} upgradeOnly={upgradeOnly} />
       )}
 
-      {showUpgradeBanner && (
-        <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-text-1 text-sm font-medium">
-              {data.activeCount} of {data.limit} free boards used
-            </p>
-            <p className="text-text-3 text-xs mt-0.5">
-              One person built this. $29 once → unlimited boards, forever.{' '}
-              <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade</button>
-            </p>
-          </div>
-          <button
-            onClick={dismissBanner}
-            className="text-text-3 hover:text-text-2 text-lg leading-none flex-shrink-0 transition-colors"
-            title="Dismiss for 7 days"
-          >
-            ×
-          </button>
-        </div>
-      )}
 
       <div className="w-full max-w-2xl flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-text-1 tracking-tight">My boards</h1>
-          {!data.isPro && (
-            <p className="text-text-3 text-sm mt-0.5">
-              {data.activeCount} of {data.limit} active boards used
-              {data.activeCount >= data.limit && (
-                <> · <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade for unlimited</button></>
-              )}
-            </p>
-          )}
+          <p className="text-text-3 text-sm mt-0.5">
+            {data.isPro ? (
+              <>
+                {data.activeCount} active {data.activeCount === 1 ? 'board' : 'boards'} ·{' '}
+                {data.isLifetime ? (
+                  <span>Lifetime member</span>
+                ) : (
+                  <button
+                    onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }}
+                    className="text-accent hover:underline"
+                    title="Own it forever — convert to lifetime for $11"
+                  >
+                    Pro (Annual)
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {data.activeCount} of {data.limit} active boards used
+                {data.activeCount >= data.limit && (
+                  <> · <button onClick={() => { setUpgradeOnly(false); setShowUpgrade(true) }} className="text-accent hover:underline">Upgrade for unlimited</button></>
+)}
+              </>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/" className="text-text-3 hover:text-text-2 text-sm transition-colors">← Home</Link>

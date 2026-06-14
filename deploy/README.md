@@ -46,12 +46,31 @@ This is how `VITE_CLERK_PUBLISHABLE_KEY` gets baked into the frontend bundle.
 | `CLERK_SECRET_KEY` | `sk_live_...` | `sk_test_...` |
 | `VITE_CLERK_PROXY_URL` | `/clerk` | _(not set — uses Clerk FAPI directly)_ |
 | `METRICS_USER` / `METRICS_PASSWORD` | set | same values as prod |
+| `VITE_LS_CHECKOUT_ANNUAL` | live checkout URL | test checkout URL |
+| `VITE_LS_CHECKOUT_LIFETIME` | live checkout URL | test checkout URL |
+| `VITE_LS_CHECKOUT_UPGRADE` | live checkout URL | test checkout URL |
+| `LEMON_SQUEEZY_WEBHOOK_SECRET` | live signing secret | test signing secret |
+| `LEMON_SQUEEZY_LIFETIME_VARIANT_ID` | live variant ID | test variant ID |
+| `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` | live variant ID | test variant ID |
 
 Prod keys come from the Clerk **production** instance. Staging keys come from the Clerk
 **development** instance (`pk_test_` / `sk_test_`).
 
 `VITE_CLERK_PROXY_URL` must be set for prod so the Clerk anti-adblock proxy stays active.
 Staging omits it because Clerk dev instances don't support proxy URL configuration.
+
+`VITE_LS_*` vars are baked into the frontend bundle at build time. Changing them requires
+a full redeploy — `pm2 reload` alone is not sufficient.
+
+### Lemon Squeezy webhook setup
+
+Create a webhook in the LS dashboard (separate webhooks for live and test mode):
+
+- **URL:** `https://anonretro.com/api/webhooks/lemonsqueezy` (prod) or `https://staging.anonretro.com/api/webhooks/lemonsqueezy` (staging)
+- **Signing secret:** generate with `openssl rand -hex 20` (max 40 chars) — set as `LEMON_SQUEEZY_WEBHOOK_SECRET`
+- **Events:** `order_created`, `order_refunded`, `subscription_created`, `subscription_cancelled`, `subscription_expired`
+
+Test mode and live mode webhooks are separate — staging uses test mode, prod uses live mode.
 
 ---
 

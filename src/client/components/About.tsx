@@ -46,16 +46,33 @@ export default function About() {
             reveals, everything appears at once with a staggered animation.
           </p>
           <p className="text-text-2 text-sm leading-relaxed">
-            Free accounts support up to 3 active boards. A one-time $29 lifetime license removes
-            the limit. No subscriptions, no renewals.
+            Free accounts support 1 active board. Upgrade for unlimited boards:
           </p>
+          <ul className="text-text-2 text-sm leading-relaxed list-disc list-inside flex flex-col gap-1 pl-1">
+            <li><span className="font-medium text-text-1">Annual — $19/yr.</span> Unlimited boards, renews yearly. Cancel anytime; access continues until the end of the billing period.</li>
+            <li><span className="font-medium text-text-1">Lifetime — $29 once.</span> Unlimited boards, forever. No renewals, no future charges.</li>
+            <li><span className="font-medium text-text-1">Annual → Lifetime upgrade — $11.</span> Already on annual? Lock in lifetime access for $11 more.</li>
+          </ul>
         </section>
 
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Keep it running</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            AnonRetro costs about $250/year to host. The lifetime license covers that and supports
-            continued development. One person built this — your contribution keeps it alive.
+            AnonRetro costs about $250/year to host. Your contribution supports the project and
+            keeps it alive. One person built this.
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-text-1">Refunds &amp; cancellations</h2>
+          <p className="text-text-2 text-sm leading-relaxed">
+            <span className="font-medium text-text-1">Refunds —</span> 30-day no-questions-asked refund on any purchase. Email <a href="mailto:mattmcx@gmail.com" className="hover:text-text-2 transition-colors underline">mattmcx@gmail.com</a> and I'll sort it out. Access is revoked immediately on refund.
+          </p>
+          <p className="text-text-2 text-sm leading-relaxed">
+            <span className="font-medium text-text-1">Cancellations —</span> Cancel your annual subscription anytime via the link in your purchase receipt. Access continues until the end of your current billing period — no proration, no partial refunds on cancel.
+          </p>
+          <p className="text-text-2 text-sm leading-relaxed">
+            After 30 days, purchases are non-refundable.
           </p>
         </section>
 

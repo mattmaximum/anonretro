@@ -16,9 +16,11 @@ export default function LandingPage() {
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
   const [activeCount, setActiveCount] = useState<number | null>(null)
-  const [freeLimit, setFreeLimit] = useState(3)
+  const [freeLimit, setFreeLimit] = useState(1)
   const [isPro, setIsPro] = useState(false)
+  const [isLifetime, setIsLifetime] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [upgradeOnly, setUpgradeOnly] = useState(false)
   const [formatOpen, setFormatOpen] = useState(false)
   const formatRef = useRef<HTMLDivElement>(null)
 
@@ -28,7 +30,7 @@ export default function LandingPage() {
       if (!token) return
       fetch('/api/me/boards', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
-        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro); setFreeLimit(d.limit) })
+        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro); setIsLifetime(d.isLifetime); setFreeLimit(d.limit) })
         .catch(() => {})
     })
   }, [isSignedIn])
@@ -82,7 +84,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-12">
       {showUpgrade && (
-        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
+        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} upgradeOnly={upgradeOnly} />
       )}
 
       <div className="text-center">
@@ -90,7 +92,8 @@ export default function LandingPage() {
           <h1 className="text-3xl font-semibold text-text-1 tracking-tight">AnonRetro</h1>
           <span className="text-xs font-medium text-text-3 border border-border rounded px-1.5 py-0.5 tracking-wide uppercase">Beta</span>
         </div>
-        <p className="text-text-2 mt-2 text-sm">You create an account, share a link, and your team joins instantly — no sign-up and everyone's anonymous.</p>
+        <p className="text-text-3 mt-1 text-xs font-medium tracking-wide uppercase">Anonymous Retrospectives for Teams</p>
+        <p className="text-text-2 mt-2 text-sm">Participants join instantly and anonymously — no account required.<br />Cards stay hidden until you reveal them — no anchoring, no groupthink.</p>
       </div>
 
       {/* Create a new board */}
@@ -130,7 +133,7 @@ export default function LandingPage() {
             </div>
             {error === 'BOARD_LIMIT_REACHED' ? (
               <p className="text-danger text-sm">
-                You've reached the limit of 3 active boards.{' '}
+                You've reached the limit of 1 active board.{' '}
                 <Link to="/dashboard" className="underline">Delete a board</Link>
                 {' '}to make room, or{' '}
                 <button onClick={() => setShowUpgrade(true)} className="underline">upgrade for unlimited</button>.
@@ -186,13 +189,12 @@ export default function LandingPage() {
                 )}
               </div>
             </div>
-            {!isPro && activeCount !== null && (
+            {activeCount !== null && (
               <p className="text-text-3 text-xs">
-                {activeCount} of {freeLimit} active boards used ·{' '}
-                <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
-                {activeCount >= freeLimit && (
-                  <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
-                )}
+                {isPro
+                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="text-accent hover:underline transition-colors">Manage boards</Link> · {isLifetime ? <span>Lifetime member</span> : <button onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }} className="text-accent hover:underline" title="Own it forever — convert to lifetime for $11">Pro (Annual)</button>}</>
+                  : <>{activeCount} of {freeLimit} active boards used · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>{activeCount >= freeLimit && <> · <button onClick={() => { setUpgradeOnly(false); setShowUpgrade(true) }} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>}</>
+                }
               </p>
             )}
           </>
