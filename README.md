@@ -1,8 +1,8 @@
 # AnonRetro
 
-You create an account, share a link, and your team joins instantly — no sign-up and everyone's anonymous.
+Anonymous retrospectives for teams. Participants join instantly and anonymously — no account required. Cards stay hidden until you reveal them — no anchoring, no groupthink.
 
-Cards stay hidden until the facilitator reveals them, so the first voice doesn't set the agenda. Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools and screen readers can't leak other people's cards. It's not CSS.
+Hiding is enforced server-side: non-owners receive `content: null` over WebSocket, so devtools and screen readers can't leak other people's cards. It's not CSS.
 
 Live at **[anonretro.com](https://anonretro.com)**
 
@@ -54,6 +54,12 @@ npm start         # serve production build on :3000
 | `VITE_CLERK_PUBLISHABLE_KEY` | Production | Same key — baked into the frontend bundle at build time by Vite |
 | `VITE_CLERK_PROXY_URL` | Prod only | Set to `/clerk` on prod; omit on staging. Enables the Clerk anti-adblock proxy. |
 | `METRICS_USER` / `METRICS_PASSWORD` | No | Basic auth for `/api/metrics` |
+| `VITE_LS_CHECKOUT_ANNUAL` | Production | Lemon Squeezy annual checkout URL — baked into frontend bundle |
+| `VITE_LS_CHECKOUT_LIFETIME` | Production | Lemon Squeezy lifetime checkout URL — baked into frontend bundle |
+| `VITE_LS_CHECKOUT_UPGRADE` | Production | Lemon Squeezy annual→lifetime upgrade checkout URL — baked into frontend bundle |
+| `LEMON_SQUEEZY_WEBHOOK_SECRET` | Production | HMAC secret for verifying incoming LS webhook signatures |
+| `LEMON_SQUEEZY_LIFETIME_VARIANT_ID` | Production | LS variant ID for the $29 lifetime product — used to branch refund logic |
+| `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` | Production | LS variant ID for the $11 upgrade product — used to branch refund logic |
 
 Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set — you can create boards freely without signing in.
 
@@ -104,8 +110,8 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 
 - Board creators sign in via [Clerk](https://clerk.com) (email/password)
 - Participants never need an account
-- Freemium: free tier allows up to 3 active boards; paid tier removes the limit
-- Payments via [Lemon Squeezy](https://lemonsqueezy.com) (Merchant of Record — handles VAT/GST globally)
+- Freemium: free tier allows 1 active board; paid tier removes the limit
+- Payments via [Lemon Squeezy](https://lemonsqueezy.com) (Merchant of Record — handles VAT/GST globally): Annual ($19/yr), Lifetime ($29 once), Annual→Lifetime upgrade ($11 once)
 - Dashboard at `/dashboard`: view all boards, rename, delete, see expiration countdown
 
 ### Retention
@@ -242,10 +248,25 @@ WAL mode enables concurrent reads alongside the single writer.
 
 ### Payments
 
-[Lemon Squeezy](https://lemonsqueezy.com) handles the $29 lifetime license. They're the
-Merchant of Record, which means they handle VAT, GST, and sales tax globally — no tax
-infrastructure required on this end. Webhooks update the user's `is_pro` flag in Clerk
-metadata.
+[Lemon Squeezy](https://lemonsqueezy.com) is the Merchant of Record — they handle VAT, GST,
+and sales tax globally. Three products:
+
+| Product | Price | Type |
+|---|---|---|
+| Annual | $19/yr | Subscription — access revoked on expiry, not on cancel |
+| Lifetime | $29 | One-time — permanent access |
+| Annual → Lifetime upgrade | $11 | One-time — converts annual to lifetime |
+
+Webhooks hit `/api/webhooks/lemonsqueezy`. The server verifies the `X-Signature` header with
+HMAC-SHA256 using `LEMON_SQUEEZY_WEBHOOK_SECRET`. Five event handlers:
+
+- `order_created` — grants lifetime/upgrade access (skips subscription orders)
+- `order_refunded` — revokes access immediately, branching on variant ID
+- `subscription_created` — grants annual access
+- `subscription_cancelled` — no-op (access continues until period end)
+- `subscription_expired` — revokes annual access (guards `is_lifetime` so lifetime holders are unaffected)
+
+Users have two DB columns: `is_pro` (unlimited boards) and `is_lifetime` (permanent, survives subscription expiry).
 
 ---
 

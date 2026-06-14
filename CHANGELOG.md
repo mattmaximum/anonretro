@@ -9,22 +9,31 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
-## [0.3.0] — 2026-06-14
+## [0.4.0] — 2026-06-14
 
 ### Added
 
 - **Annual subscription ($19/yr)** — new pricing option alongside lifetime. Subscribers get unlimited boards; access is revoked when the subscription expires (not when cancelled, so the billing period is honoured).
-- **Lifetime license ($29 one-time)** — replaces the previous single-product setup with a proper two-option checkout showing annual on the left and lifetime (with "Best value" badge) on the right.
-- **Annual → lifetime upgrade ($11)** — annual subscribers see a dismissable dashboard banner offering a one-time $11 upgrade to lifetime. Lifetime holders never see annual renewal prompts again.
+- **Lifetime license ($29 one-time)** — two-option checkout showing annual on the left and lifetime (with "Best value" badge) on the right.
+- **Annual → lifetime upgrade ($11)** — annual subscribers can convert to lifetime for $11. Clicking "Pro (Annual)" anywhere opens a single-card upgrade modal; lifetime holders see no upgrade prompts.
 - **Five webhook handlers** — `order_created`, `order_refunded`, `subscription_created`, `subscription_cancelled` (no-op, access continues until period end), and `subscription_expired` now each have a named handler. Refund logic branches on variant ID: $29 refund revokes all access; $11 refund removes lifetime status but preserves annual access.
-- **Webhook test suite** — 12 new tests in `test/server/webhook.test.ts` covering all handlers and the critical invariant: lifetime holders keep access even when a subscription_expired event fires.
+- **Webhook test suite** — 12 new tests in `test/server/webhook.test.ts` covering all handlers and the critical invariant: lifetime holders keep access even when a `subscription_expired` event fires.
+- **Refund and cancellation policy** — 30-day refund via email, immediate access revocation on refund; cancellation honours the billing period with no proration. Documented on the About page.
 
 ### Changed
 
-- **Free tier reduced to 1 active board** (was 3). The free use case is running a single retro and moving on; the upgrade prompt appears at the board-creation wall rather than as a standing dashboard banner.
-- **Upgrade modal redesigned** — two-column layout showing annual and lifetime side by side, driven by `VITE_LS_CHECKOUT_ANNUAL` and `VITE_LS_CHECKOUT_LIFETIME` env vars (replaces single `VITE_LEMON_SQUEEZY_CHECKOUT_URL`).
-- **PM2 config** — `ecosystem.config.cjs` now passes `LEMON_SQUEEZY_WEBHOOK_SECRET`, `LEMON_SQUEEZY_LIFETIME_VARIANT_ID`, and `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` to the server process so webhooks work after deploy.
-- **About page** copy updated to reflect 1-board free tier and both pricing options.
+- **Free tier reduced to 1 active board** (was 3). Upgrade prompt appears at the board-creation wall (402) rather than as a standing dashboard banner.
+- **Upgrade modal** — two-column layout for free users ($19/$29); single-card $11 layout for annual subscribers upgrading to lifetime.
+- **Status line** (homepage and dashboard) — shows `{n} active boards · Manage boards · Pro (Annual)` or `· Lifetime member`. Clickable elements use accent colour; non-clickable labels use regular text.
+- **Landing page copy** — new tagline "Anonymous Retrospectives for Teams" and two-line description leading with the participant and card-hiding value props.
+- **PM2 configs** — `ecosystem.config.cjs` and `ecosystem.staging.config.cjs` now pass all three LS env vars to the server process.
+- **About page** — updated pricing, added refund/cancellation policy section.
+
+### Fixed
+
+- **`order_created` firing for subscription purchases** — LS fires `order_created` for all purchases including subscriptions, which was incorrectly granting `is_lifetime` to annual subscribers. The handler now skips any variant that isn't a known one-time product; `subscription_created` handles annual access.
+- **"Manage boards" link hidden for pro users** — the board count line was wrapped in `!isPro`, hiding it entirely for paid users. Pro users now always see their board count and the manage link.
+- **"Pro (Annual)" not clickable on homepage** — was rendered as a plain `<span>`; now a button that opens the $11 upgrade modal.
 
 ---
 
