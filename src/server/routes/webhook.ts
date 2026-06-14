@@ -94,6 +94,11 @@ export default async function webhookRoutes(fastify: FastifyInstance) {
           fastify.log.warn({ orderId, email }, 'order_created with no clerk_user_id')
           return reply.status(200).send({ received: true })
         }
+        // Only handle known one-time purchase variants; subscriptions are handled by subscription_created
+        if (variantId !== LIFETIME_VARIANT_ID && variantId !== UPGRADE_VARIANT_ID) {
+          fastify.log.info({ clerkUserId, orderId, variantId }, 'order_created: subscription variant — skipping, subscription_created will handle')
+          break
+        }
         grantLifetimeAccess(clerkUserId, orderId, email, variantId)
         fastify.log.info({ clerkUserId, orderId, email, variantId }, 'lifetime access granted')
         break
