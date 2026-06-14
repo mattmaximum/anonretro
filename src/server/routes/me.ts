@@ -17,10 +17,11 @@ export default async function meRoutes(fastify: FastifyInstance) {
     const boards = getBoardsByOwner.all(clerkUserId)
     const { count: activeCount } = countActiveBoardsByOwner.get(clerkUserId) as { count: number }
 
-    const user = getUserByClerkId.get(clerkUserId) as { is_pro: number } | undefined
+    const user = getUserByClerkId.get(clerkUserId) as { is_pro: number; is_lifetime: number } | undefined
     const isPro = user?.is_pro === 1
+    const isLifetime = user?.is_lifetime === 1
 
-    return { boards, activeCount, isPro, limit: FREE_BOARD_LIMIT }
+    return { boards, activeCount, isPro, isLifetime, limit: FREE_BOARD_LIMIT }
   })
 
   // DELETE /api/me/boards/:id — hard delete a board and all its data

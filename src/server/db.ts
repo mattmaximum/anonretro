@@ -79,6 +79,8 @@ try { db.exec("ALTER TABLE boards ADD COLUMN last_write_at INTEGER") } catch { /
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_boards_write ON boards(last_write_at)") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN owner_id TEXT") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE boards ADD COLUMN archived INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE users ADD COLUMN is_lifetime INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE users ADD COLUMN lemonsqueezy_variant_id TEXT") } catch { /* already exists */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -139,6 +141,37 @@ export const upsertUserProByClerkId = db.prepare(
      is_pro = 1,
      lemonsqueezy_order_id = excluded.lemonsqueezy_order_id,
      email = excluded.email`
+)
+
+export const upsertLifetimeByClerkId = db.prepare(
+  `INSERT INTO users (clerk_user_id, is_pro, is_lifetime, lemonsqueezy_order_id, lemonsqueezy_variant_id, email, created_at)
+   VALUES (?, 1, 1, ?, ?, ?, ?)
+   ON CONFLICT (clerk_user_id) DO UPDATE SET
+     is_pro = 1,
+     is_lifetime = 1,
+     lemonsqueezy_order_id = excluded.lemonsqueezy_order_id,
+     lemonsqueezy_variant_id = excluded.lemonsqueezy_variant_id,
+     email = excluded.email`
+)
+
+export const upsertAnnualByClerkId = db.prepare(
+  `INSERT INTO users (clerk_user_id, is_pro, email, created_at)
+   VALUES (?, 1, ?, ?)
+   ON CONFLICT (clerk_user_id) DO UPDATE SET
+     is_pro = 1,
+     email = excluded.email`
+)
+
+export const clearLifetimeOnly = db.prepare<[string]>(
+  'UPDATE users SET is_lifetime = 0 WHERE clerk_user_id = ?'
+)
+
+export const revokeFullAccess = db.prepare<[string]>(
+  'UPDATE users SET is_pro = 0, is_lifetime = 0 WHERE clerk_user_id = ?'
+)
+
+export const revokeAnnualByClerkId = db.prepare<[string]>(
+  'UPDATE users SET is_pro = 0 WHERE clerk_user_id = ? AND is_lifetime = 0'
 )
 
 export const updateBoardActivity = db.prepare<[number, string]>(

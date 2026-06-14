@@ -13,7 +13,7 @@ import { broadcast } from '../ws.js'
 import { getAuthUserId } from '../lib/auth.js'
 import { utcDate } from '../lib/utils.js'
 
-export const FREE_BOARD_LIMIT = 3
+export const FREE_BOARD_LIMIT = 1
 
 export default async function boardRoutes(fastify: FastifyInstance) {
   // POST /api/boards — create a new board (requires auth)
