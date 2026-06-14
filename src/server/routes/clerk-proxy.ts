@@ -21,7 +21,7 @@ function fapiUrlFromPublishableKey(key: string): string | null {
 }
 
 const SKIP_HEADERS = new Set([
-  'host', 'connection', 'transfer-encoding', 'keep-alive', 'content-length',
+  'host', 'connection', 'transfer-encoding', 'keep-alive', 'content-length', 'authorization',
 ])
 
 export default async function clerkProxyRoutes(fastify: FastifyInstance) {
