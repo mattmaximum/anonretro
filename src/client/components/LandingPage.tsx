@@ -186,13 +186,12 @@ export default function LandingPage() {
                 )}
               </div>
             </div>
-            {!isPro && activeCount !== null && (
+            {activeCount !== null && (
               <p className="text-text-3 text-xs">
-                {activeCount} of {freeLimit} active boards used ·{' '}
-                <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>
-                {activeCount >= freeLimit && (
-                  <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>
-                )}
+                {isPro
+                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link></>
+                  : <>{activeCount} of {freeLimit} active boards used · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>{activeCount >= freeLimit && <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>}</>
+                }
               </p>
             )}
           </>
