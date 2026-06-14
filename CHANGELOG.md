@@ -9,7 +9,7 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
-## [0.4.0] — 2026-06-14
+## [0.3.0] — 2026-06-14
 
 ### Added
 
