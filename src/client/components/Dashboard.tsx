@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [upgradeOnly, setUpgradeOnly] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
@@ -127,7 +128,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col items-center p-6 gap-8 pt-12">
       {showUpgrade && (
-        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
+        <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} upgradeOnly={upgradeOnly} />
       )}
 
 
@@ -142,7 +143,7 @@ export default function Dashboard() {
                   <span className="text-accent">Lifetime member</span>
                 ) : (
                   <button
-                    onClick={() => setShowUpgrade(true)}
+                    onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }}
                     className="text-accent hover:underline"
                     title="Own it forever — convert to lifetime for $11"
                   >
@@ -154,8 +155,8 @@ export default function Dashboard() {
               <>
                 {data.activeCount} of {data.limit} active boards used
                 {data.activeCount >= data.limit && (
-                  <> · <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade for unlimited</button></>
-                )}
+                  <> · <button onClick={() => { setUpgradeOnly(false); setShowUpgrade(true) }} className="text-accent hover:underline">Upgrade for unlimited</button></>
+)}
               </>
             )}
           </p>

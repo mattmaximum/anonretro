@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 
 const LS_CHECKOUT_LIFETIME = import.meta.env.VITE_LS_CHECKOUT_LIFETIME as string | undefined
 const LS_CHECKOUT_ANNUAL = import.meta.env.VITE_LS_CHECKOUT_ANNUAL as string | undefined
+const LS_CHECKOUT_UPGRADE = import.meta.env.VITE_LS_CHECKOUT_UPGRADE as string | undefined
 
 interface Props {
   clerkUserId?: string
   onClose: () => void
+  upgradeOnly?: boolean
 }
 
 function buildCheckoutUrl(base: string | undefined, clerkUserId: string | undefined) {
@@ -13,9 +15,10 @@ function buildCheckoutUrl(base: string | undefined, clerkUserId: string | undefi
   return `${base}?checkout[custom][clerk_user_id]=${encodeURIComponent(clerkUserId)}`
 }
 
-export default function UpgradeModal({ clerkUserId, onClose }: Props) {
+export default function UpgradeModal({ clerkUserId, onClose, upgradeOnly = false }: Props) {
   const lifetimeUrl = buildCheckoutUrl(LS_CHECKOUT_LIFETIME, clerkUserId)
   const annualUrl = buildCheckoutUrl(LS_CHECKOUT_ANNUAL, clerkUserId)
+  const upgradeUrl = buildCheckoutUrl(LS_CHECKOUT_UPGRADE, clerkUserId)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -43,65 +46,101 @@ export default function UpgradeModal({ clerkUserId, onClose }: Props) {
           </svg>
         </button>
 
-        <div className="flex flex-col gap-2">
-          <p className="text-text-1 font-medium">Unlock unlimited boards</p>
-          <p className="text-text-2 text-sm leading-relaxed">
-            One person built this. It costs about $250/year to run and your contribution supports the project.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {/* Annual */}
-          <div className="flex flex-col gap-3 border border-border rounded-lg p-4">
-            <div>
-              <p className="text-text-1 font-medium text-sm">Annual</p>
-              <p className="text-text-1 text-xl font-semibold mt-1">$19<span className="text-text-3 text-sm font-normal">/yr</span></p>
+        {upgradeOnly ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <p className="text-text-1 font-medium">Own it forever</p>
+              <p className="text-text-2 text-sm leading-relaxed">
+                You're on the annual plan. Add $11 once and never pay again — lifetime access, no renewals.
+              </p>
             </div>
-            <p className="text-text-3 text-xs leading-relaxed">Unlimited boards. Renews yearly.</p>
-            {annualUrl ? (
-              <a
-                href={annualUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onClose}
-                className="border border-border hover:border-text-2 text-text-1 text-sm font-medium py-2 px-3 rounded text-center transition-colors"
-              >
-                Get annual
-              </a>
-            ) : (
-              <button disabled className="border border-border text-text-3 text-sm font-medium py-2 px-3 rounded text-center cursor-not-allowed opacity-50">
-                Coming soon
-              </button>
-            )}
-          </div>
-
-          {/* Lifetime */}
-          <div className="flex flex-col gap-3 border border-accent rounded-lg p-4 relative">
-            <span className="absolute -top-2.5 left-3 bg-accent text-white text-xs font-medium px-2 py-0.5 rounded-full">
-              Best value
-            </span>
-            <div>
-              <p className="text-text-1 font-medium text-sm">Lifetime</p>
-              <p className="text-text-1 text-xl font-semibold mt-1">$29<span className="text-text-3 text-sm font-normal"> once</span></p>
+            <div className="flex flex-col gap-3 border border-accent rounded-lg p-5 relative">
+              <span className="absolute -top-2.5 left-3 bg-accent text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                One-time upgrade
+              </span>
+              <div>
+                <p className="text-text-1 font-medium text-sm">Annual → Lifetime</p>
+                <p className="text-text-1 text-xl font-semibold mt-1">$11<span className="text-text-3 text-sm font-normal"> once</span></p>
+              </div>
+              <p className="text-text-3 text-xs leading-relaxed">Locks in lifetime access on top of your current plan. No future charges.</p>
+              {upgradeUrl ? (
+                <a
+                  href={upgradeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className="bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 px-3 rounded text-center transition-colors"
+                >
+                  Upgrade to lifetime — $11
+                </a>
+              ) : (
+                <button disabled className="bg-accent opacity-50 text-white text-sm font-medium py-2 px-3 rounded text-center cursor-not-allowed">
+                  Coming soon
+                </button>
+              )}
             </div>
-            <p className="text-text-3 text-xs leading-relaxed">Unlimited boards, forever. No renewals.</p>
-            {lifetimeUrl ? (
-              <a
-                href={lifetimeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onClose}
-                className="bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 px-3 rounded text-center transition-colors"
-              >
-                Get lifetime — $29
-              </a>
-            ) : (
-              <button disabled className="bg-accent opacity-50 text-white text-sm font-medium py-2 px-3 rounded text-center cursor-not-allowed">
-                Coming soon
-              </button>
-            )}
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-col gap-2">
+              <p className="text-text-1 font-medium">Unlock unlimited boards</p>
+              <p className="text-text-2 text-sm leading-relaxed">
+                One person built this. It costs about $250/year to run and your contribution supports the project.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Annual */}
+              <div className="flex flex-col gap-3 border border-border rounded-lg p-4">
+                <div>
+                  <p className="text-text-1 font-medium text-sm">Annual</p>
+                  <p className="text-text-1 text-xl font-semibold mt-1">$19<span className="text-text-3 text-sm font-normal">/yr</span></p>
+                </div>
+                <p className="text-text-3 text-xs leading-relaxed">Unlimited boards. Renews yearly.</p>
+                {annualUrl ? (
+                  <a
+                    href={annualUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onClose}
+                    className="border border-border hover:border-text-2 text-text-1 text-sm font-medium py-2 px-3 rounded text-center transition-colors"
+                  >
+                    Get annual
+                  </a>
+                ) : (
+                  <button disabled className="border border-border text-text-3 text-sm font-medium py-2 px-3 rounded text-center cursor-not-allowed opacity-50">
+                    Coming soon
+                  </button>
+                )}
+              </div>
+              {/* Lifetime */}
+              <div className="flex flex-col gap-3 border border-accent rounded-lg p-4 relative">
+                <span className="absolute -top-2.5 left-3 bg-accent text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                  Best value
+                </span>
+                <div>
+                  <p className="text-text-1 font-medium text-sm">Lifetime</p>
+                  <p className="text-text-1 text-xl font-semibold mt-1">$29<span className="text-text-3 text-sm font-normal"> once</span></p>
+                </div>
+                <p className="text-text-3 text-xs leading-relaxed">Unlimited boards, forever. No renewals.</p>
+                {lifetimeUrl ? (
+                  <a
+                    href={lifetimeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onClose}
+                    className="bg-accent hover:bg-accent-hover text-white text-sm font-medium py-2 px-3 rounded text-center transition-colors"
+                  >
+                    Get lifetime — $29
+                  </a>
+                ) : (
+                  <button disabled className="bg-accent opacity-50 text-white text-sm font-medium py-2 px-3 rounded text-center cursor-not-allowed">
+                    Coming soon
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         <button
           onClick={onClose}
