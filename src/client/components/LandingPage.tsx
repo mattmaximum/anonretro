@@ -191,7 +191,7 @@ export default function LandingPage() {
             {activeCount !== null && (
               <p className="text-text-3 text-xs">
                 {isPro
-                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link> · {isLifetime ? <span className="text-accent">Lifetime member</span> : <button onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }} className="text-accent hover:underline" title="Own it forever — convert to lifetime for $11">Pro (Annual)</button>}</>
+                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="text-accent hover:underline transition-colors">Manage boards</Link> · {isLifetime ? <span>Lifetime member</span> : <button onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }} className="text-accent hover:underline" title="Own it forever — convert to lifetime for $11">Pro (Annual)</button>}</>
                   : <>{activeCount} of {freeLimit} active boards used · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>{activeCount >= freeLimit && <> · <button onClick={() => { setUpgradeOnly(false); setShowUpgrade(true) }} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>}</>
                 }
               </p>

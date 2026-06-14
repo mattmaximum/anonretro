@@ -140,7 +140,7 @@ export default function Dashboard() {
               <>
                 {data.activeCount} active {data.activeCount === 1 ? 'board' : 'boards'} ·{' '}
                 {data.isLifetime ? (
-                  <span className="text-accent">Lifetime member</span>
+                  <span>Lifetime member</span>
                 ) : (
                   <button
                     onClick={() => { setUpgradeOnly(true); setShowUpgrade(true) }}
