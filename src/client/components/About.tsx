@@ -46,8 +46,7 @@ export default function About() {
             reveals, everything appears at once with a staggered animation.
           </p>
           <p className="text-text-2 text-sm leading-relaxed">
-            Free accounts support up to 3 active boards. A one-time $29 lifetime license removes
-            the limit. No subscriptions, no renewals.
+            Free accounts support 1 active board. Upgrade for unlimited — $19/yr or $29 once for lifetime access.
           </p>
         </section>
 

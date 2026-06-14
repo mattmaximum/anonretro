@@ -16,7 +16,7 @@ export default function LandingPage() {
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
   const [activeCount, setActiveCount] = useState<number | null>(null)
-  const [freeLimit, setFreeLimit] = useState(3)
+  const [freeLimit, setFreeLimit] = useState(1)
   const [isPro, setIsPro] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [formatOpen, setFormatOpen] = useState(false)
@@ -130,7 +130,7 @@ export default function LandingPage() {
             </div>
             {error === 'BOARD_LIMIT_REACHED' ? (
               <p className="text-danger text-sm">
-                You've reached the limit of 3 active boards.{' '}
+                You've reached the limit of 1 active board.{' '}
                 <Link to="/dashboard" className="underline">Delete a board</Link>
                 {' '}to make room, or{' '}
                 <button onClick={() => setShowUpgrade(true)} className="underline">upgrade for unlimited</button>.

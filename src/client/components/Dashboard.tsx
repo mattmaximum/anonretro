@@ -12,10 +12,13 @@ interface Board {
   archived: number
 }
 
+const LS_CHECKOUT_UPGRADE = import.meta.env.VITE_LS_CHECKOUT_UPGRADE as string | undefined
+
 interface MeBoards {
   boards: Board[]
   activeCount: number
   isPro: boolean
+  isLifetime: boolean
   limit: number
 }
 
@@ -127,7 +130,7 @@ export default function Dashboard() {
   }
 
   const activeBoards = data.boards.filter(b => b.archived === 0)
-  const showUpgradeBanner = !data.isPro && data.activeCount >= 2 && !dismissed
+  const showLifetimeUpgradeBanner = data.isPro && !data.isLifetime && !dismissed
 
   function dismissBanner() {
     localStorage.setItem(DISMISS_KEY, String(Date.now()))
@@ -140,15 +143,20 @@ export default function Dashboard() {
         <UpgradeModal clerkUserId={user?.id} onClose={() => setShowUpgrade(false)} />
       )}
 
-      {showUpgradeBanner && (
+      {showLifetimeUpgradeBanner && LS_CHECKOUT_UPGRADE && user?.id && (
         <div className="w-full max-w-2xl bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-text-1 text-sm font-medium">
-              {data.activeCount} of {data.limit} free boards used
-            </p>
+            <p className="text-text-1 text-sm font-medium">Own it forever for $11 more</p>
             <p className="text-text-3 text-xs mt-0.5">
-              One person built this. $29 once → unlimited boards, forever.{' '}
-              <button onClick={() => setShowUpgrade(true)} className="text-accent hover:underline">Upgrade</button>
+              You're on the annual plan. Add $11 once and never pay again.{' '}
+              <a
+                href={`${LS_CHECKOUT_UPGRADE}?checkout[custom][clerk_user_id]=${encodeURIComponent(user.id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Upgrade to lifetime
+              </a>
             </p>
           </div>
           <button
