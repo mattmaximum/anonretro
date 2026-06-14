@@ -18,6 +18,7 @@ export default function LandingPage() {
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [freeLimit, setFreeLimit] = useState(1)
   const [isPro, setIsPro] = useState(false)
+  const [isLifetime, setIsLifetime] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [formatOpen, setFormatOpen] = useState(false)
   const formatRef = useRef<HTMLDivElement>(null)
@@ -28,7 +29,7 @@ export default function LandingPage() {
       if (!token) return
       fetch('/api/me/boards', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
-        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro); setFreeLimit(d.limit) })
+        .then(d => { setActiveCount(d.activeCount); setIsPro(d.isPro); setIsLifetime(d.isLifetime); setFreeLimit(d.limit) })
         .catch(() => {})
     })
   }, [isSignedIn])
@@ -189,7 +190,7 @@ export default function LandingPage() {
             {activeCount !== null && (
               <p className="text-text-3 text-xs">
                 {isPro
-                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link></>
+                  ? <>{activeCount} active {activeCount === 1 ? 'board' : 'boards'} · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link> · <span className="text-accent">{isLifetime ? 'Lifetime member' : 'Pro'}</span></>
                   : <>{activeCount} of {freeLimit} active boards used · <Link to="/dashboard" className="hover:text-text-2 transition-colors">Manage boards</Link>{activeCount >= freeLimit && <> · <button onClick={() => setShowUpgrade(true)} className="hover:text-text-2 transition-colors">Upgrade for unlimited</button></>}</>
                 }
               </p>
