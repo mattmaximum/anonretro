@@ -9,6 +9,25 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.3.0] — 2026-06-14
+
+### Added
+
+- **Annual subscription ($19/yr)** — new pricing option alongside lifetime. Subscribers get unlimited boards; access is revoked when the subscription expires (not when cancelled, so the billing period is honoured).
+- **Lifetime license ($29 one-time)** — replaces the previous single-product setup with a proper two-option checkout showing annual on the left and lifetime (with "Best value" badge) on the right.
+- **Annual → lifetime upgrade ($11)** — annual subscribers see a dismissable dashboard banner offering a one-time $11 upgrade to lifetime. Lifetime holders never see annual renewal prompts again.
+- **Five webhook handlers** — `order_created`, `order_refunded`, `subscription_created`, `subscription_cancelled` (no-op, access continues until period end), and `subscription_expired` now each have a named handler. Refund logic branches on variant ID: $29 refund revokes all access; $11 refund removes lifetime status but preserves annual access.
+- **Webhook test suite** — 12 new tests in `test/server/webhook.test.ts` covering all handlers and the critical invariant: lifetime holders keep access even when a subscription_expired event fires.
+
+### Changed
+
+- **Free tier reduced to 1 active board** (was 3). The free use case is running a single retro and moving on; the upgrade prompt appears at the board-creation wall rather than as a standing dashboard banner.
+- **Upgrade modal redesigned** — two-column layout showing annual and lifetime side by side, driven by `VITE_LS_CHECKOUT_ANNUAL` and `VITE_LS_CHECKOUT_LIFETIME` env vars (replaces single `VITE_LEMON_SQUEEZY_CHECKOUT_URL`).
+- **PM2 config** — `ecosystem.config.cjs` now passes `LEMON_SQUEEZY_WEBHOOK_SECRET`, `LEMON_SQUEEZY_LIFETIME_VARIANT_ID`, and `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` to the server process so webhooks work after deploy.
+- **About page** copy updated to reflect 1-board free tier and both pricing options.
+
+---
+
 ## [0.2.0] — 2026-06-03
 
 ### Added
