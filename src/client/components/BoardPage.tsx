@@ -31,6 +31,7 @@ export default function BoardPage() {
   const [boardTitle, setBoardTitle] = useState('')
   const [boardCreatedAt, setBoardCreatedAt] = useState<number | null>(null)
   const [boardLastActivityAt, setBoardLastActivityAt] = useState<number | null>(null)
+  const [ownerIsPro, setOwnerIsPro] = useState(false)
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set())
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
   const [revealSequence, setRevealSequence] = useState<string[]>([])
@@ -113,6 +114,7 @@ export default function BoardPage() {
         setBoardTitle(msg.title)
         setBoardCreatedAt(msg.created_at)
         setBoardLastActivityAt(msg.last_activity_at)
+        setOwnerIsPro(msg.owner_is_pro)
         break
 
       case 'card_update':
@@ -373,7 +375,7 @@ export default function BoardPage() {
 
         {/* Retention box + privacy link + account */}
         <div className="flex flex-col items-end gap-0.5">
-          <RetentionBox lastActivityAt={boardLastActivityAt} />
+          <RetentionBox lastActivityAt={boardLastActivityAt} ownerIsPro={ownerIsPro} />
           <div className="flex items-center gap-2">
             <Link to="/privacy" className="text-text-3 text-[10px] hover:text-text-2 transition-colors">Privacy</Link>
             {isSignedIn && <UserButton />}
@@ -513,13 +515,14 @@ export default function BoardPage() {
 
 // ── Retention box ─────────────────────────────────────────────────────────────
 
-function RetentionBox({ lastActivityAt }: { lastActivityAt: number | null }) {
+function RetentionBox({ lastActivityAt, ownerIsPro }: { lastActivityAt: number | null; ownerIsPro: boolean }) {
   const [label, setLabel] = useState('')
 
   useEffect(() => {
     if (!lastActivityAt) return
     function update() {
-      const expiresAt = (lastActivityAt! + 2592000) * 1000 // 30 days
+      const expirySeconds = ownerIsPro ? 31536000 : 2592000
+      const expiresAt = (lastActivityAt! + expirySeconds) * 1000
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }
       const dLeft = Math.floor(msLeft / 86_400_000)
@@ -534,7 +537,7 @@ function RetentionBox({ lastActivityAt }: { lastActivityAt: number | null }) {
     update()
     const id = setInterval(update, 60_000)
     return () => clearInterval(id)
-  }, [lastActivityAt])
+  }, [lastActivityAt, ownerIsPro])
 
   if (!label) return null
   return <p className="text-text-3 text-xs">{label}</p>

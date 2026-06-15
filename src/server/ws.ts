@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
-  getBoard, getCards, getCard, getParticipant, getParticipants,
+  getBoard, getCards, getCard, getParticipant, getParticipants, getUserByClerkId,
   insertCard, updateCard, moveCard, deleteCard, voteToggleTx,
   updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateBoardTitle, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
@@ -211,6 +211,9 @@ export default async function wsRoutes(fastify: FastifyInstance) {
 
     const myVotedCards = (getVotesByParticipant.all(token, boardId) as Array<{ card_id: string }>).map(r => r.card_id)
 
+    const ownerUser = boardRow.owner_id ? getUserByClerkId.get(boardRow.owner_id) as any : null
+    const ownerIsPro = !!(ownerUser?.is_pro || ownerUser?.is_lifetime)
+
     send(ws, {
       type: 'board_state',
       blur_enabled: boardRow.blur_enabled === 1,
@@ -224,6 +227,7 @@ export default async function wsRoutes(fastify: FastifyInstance) {
       created_at: boardRow.created_at,
       last_activity_at: boardRow.last_activity_at,
       my_voted_card_ids: myVotedCards,
+      owner_is_pro: ownerIsPro,
     })
 
     broadcastPresence(boardId)

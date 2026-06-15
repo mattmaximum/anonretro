@@ -297,11 +297,24 @@ export const countHotBoards = db.prepare<[number]>(
   'SELECT COUNT(*) as count FROM boards WHERE last_write_at >= ?'
 )
 
-export const deleteExpiredBoards = db.transaction((cutoff: number) => {
-  db.prepare('DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?))').run(cutoff)
-  db.prepare('DELETE FROM cards WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?)').run(cutoff)
-  db.prepare('DELETE FROM participants WHERE board_id IN (SELECT id FROM boards WHERE last_activity_at < ?)').run(cutoff)
-  db.prepare('DELETE FROM boards WHERE last_activity_at < ?').run(cutoff)
+export const deleteExpiredBoards = db.transaction((freeCutoff: number, proCutoff: number) => {
+  // Paid users (is_pro=1 or is_lifetime=1) get 1-year retention; free users get 30 days.
+  // A board with no owner_id (anonymous facilitator) is treated as free.
+  const expiredIds = `
+    SELECT b.id FROM boards b
+    LEFT JOIN users u ON u.clerk_user_id = b.owner_id
+    WHERE (u.is_pro = 1 OR u.is_lifetime = 1)
+      AND b.last_activity_at < ?
+    UNION
+    SELECT b.id FROM boards b
+    LEFT JOIN users u ON u.clerk_user_id = b.owner_id
+    WHERE (u.is_pro IS NULL OR (u.is_pro = 0 AND u.is_lifetime = 0))
+      AND b.last_activity_at < ?
+  `
+  db.prepare(`DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id IN (${expiredIds}))`).run(proCutoff, freeCutoff)
+  db.prepare(`DELETE FROM cards WHERE board_id IN (${expiredIds})`).run(proCutoff, freeCutoff)
+  db.prepare(`DELETE FROM participants WHERE board_id IN (${expiredIds})`).run(proCutoff, freeCutoff)
+  db.prepare(`DELETE FROM boards WHERE id IN (${expiredIds})`).run(proCutoff, freeCutoff)
 })
 
 export const getActiveTimers = db.prepare(`

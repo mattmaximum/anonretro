@@ -7,7 +7,7 @@ import {
   recordDailyBoardCreated, recordDailyParticipantJoined, deleteBoardFull,
   deleteExpiredBoards, getUserByClerkId, insertUser, countActiveBoardsByOwner,
 } from '../db.js'
-import { IDENTITY_POOL, EVICTION_LIMIT, BOARD_EXPIRY_SECONDS } from '../../shared/constants.js'
+import { IDENTITY_POOL, EVICTION_LIMIT, BOARD_EXPIRY_SECONDS, BOARD_EXPIRY_PRO_SECONDS } from '../../shared/constants.js'
 import { FORMATS } from '../../shared/formats.js'
 import { broadcast } from '../ws.js'
 import { getAuthUserId } from '../lib/auth.js'
@@ -116,8 +116,8 @@ export default async function boardRoutes(fastify: FastifyInstance) {
 function runEviction() {
   try {
     // 1. Time-based: purge boards inactive for 7+ days
-    const cutoff = Math.floor(Date.now() / 1000) - BOARD_EXPIRY_SECONDS
-    deleteExpiredBoards(cutoff)
+    const now = Math.floor(Date.now() / 1000)
+    deleteExpiredBoards(now - BOARD_EXPIRY_SECONDS, now - BOARD_EXPIRY_PRO_SECONDS)
 
     // 2. Safety net: if still over the hard cap, evict oldest
     const { count } = countBoards.get() as { count: number }

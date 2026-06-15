@@ -15,7 +15,7 @@ import clerkProxyRoutes from './routes/clerk-proxy.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
 import db, { deleteExpiredBoards } from './db.js'
-import { BOARD_EXPIRY_SECONDS } from '../shared/constants.js'
+import { BOARD_EXPIRY_SECONDS, BOARD_EXPIRY_PRO_SECONDS } from '../shared/constants.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT ?? 3000)
@@ -102,8 +102,8 @@ if (IS_PROD) {
 // Periodic expired-board cleanup — runs every 6 hours regardless of traffic
 function purgeExpiredBoards() {
   try {
-    const cutoff = Math.floor(Date.now() / 1000) - BOARD_EXPIRY_SECONDS
-    deleteExpiredBoards(cutoff)
+    const now = Math.floor(Date.now() / 1000)
+    deleteExpiredBoards(now - BOARD_EXPIRY_SECONDS, now - BOARD_EXPIRY_PRO_SECONDS)
   } catch (err) {
     console.error('Scheduled board purge error (non-fatal):', err)
   }
