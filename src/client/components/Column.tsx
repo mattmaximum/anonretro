@@ -34,7 +34,10 @@ export default function Column({ name, columnId, cards, revealedIds, revealSeque
   }
 
   return (
-    <div className="flex flex-col gap-3 min-w-0">
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col gap-3 min-w-0 rounded-lg transition-colors ${isOver && activeCardId ? 'ring-2 ring-accent/40 bg-accent/5 p-2 -m-2' : ''}`}
+    >
       <h2 className="text-xs font-semibold uppercase tracking-widest text-text-2 px-1">{name}</h2>
 
       {/* Add card input */}
@@ -57,12 +60,9 @@ export default function Column({ name, columnId, cards, revealedIds, revealSeque
         </button>
       </form>
 
-      {/* Cards — droppable zone */}
-      <div
-        ref={setNodeRef}
-        className={`flex flex-col gap-2 min-h-[72px] rounded transition-colors ${isOver && activeCardId ? 'ring-2 ring-accent/40 bg-accent/5' : ''}`}
-      >
-        {cards.length === 0 && !isOver && (
+      {/* Cards */}
+      <div className={`flex flex-col gap-2 min-h-[72px]`}>
+        {cards.length === 0 && (
           <div className="border-dashed border border-border/40 bg-surface rounded flex items-center justify-center h-[72px]">
             <span className="text-text-3 text-xs">No cards yet</span>
           </div>
