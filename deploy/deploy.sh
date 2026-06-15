@@ -55,7 +55,7 @@ rsync -a \
 # 3. Install dependencies and build inside the release directory
 echo "→ Installing dependencies"
 cd "$RELEASE_DIR"
-npm ci
+npm install
 
 # Source .env so VITE_ vars (baked into the frontend bundle) are available at build time
 if [ -f "$ENV_FILE" ]; then
