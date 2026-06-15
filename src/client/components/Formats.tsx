@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 
 const FORMATS_GUIDE = [
   {
-    name: 'What went well / Unwell / Actions',
-    focus: 'Objective evaluation. Focuses heavily on generating concrete, fixable action items for the next cycle.',
+    name: 'What went well / Unwell / Suggestions',
+    focus: 'Objective evaluation. Surfaces what worked, what didn\'t, and collects concrete suggestions for the next cycle.',
     bestFor: 'Standard sprints focused heavily on process mechanics and delivery metrics.',
   },
   {
