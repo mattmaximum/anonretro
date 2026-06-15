@@ -10,6 +10,7 @@ import exportRoutes from './routes/export.js'
 import metricsRoutes from './routes/metrics.js'
 import meRoutes from './routes/me.js'
 import webhookRoutes from './routes/webhook.js'
+import contactRoutes from './routes/contact.js'
 import clerkProxyRoutes from './routes/clerk-proxy.js'
 import wsRoutes, { broadcast } from './ws.js'
 import { initTimerService, restoreTimers } from './timer.js'
@@ -74,6 +75,7 @@ await fastify.register(exportRoutes)
 await fastify.register(metricsRoutes)
 await fastify.register(meRoutes)
 await fastify.register(webhookRoutes)
+await fastify.register(contactRoutes)
 await fastify.register(clerkProxyRoutes)
 await fastify.register(wsRoutes)
 

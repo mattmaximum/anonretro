@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard.js'
 import PrivacyPolicy from './components/PrivacyPolicy.js'
 import About from './components/About.js'
 import Formats from './components/Formats.js'
+import Contact from './components/Contact.js'
 import ErrorBoundary from './components/ErrorBoundary.js'
 import ThemeToggle from './components/ThemeToggle.js'
 
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/about" element={<About />} />
         <Route path="/formats" element={<Formats />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </>

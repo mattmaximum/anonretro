@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function About() {
   const navigate = useNavigate()
@@ -66,7 +66,7 @@ export default function About() {
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Refunds &amp; cancellations</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            <span className="font-medium text-text-1">Refunds —</span> 30-day no-questions-asked refund on any purchase. Email <a href="mailto:mattmcx@gmail.com" className="hover:text-text-2 transition-colors underline">mattmcx@gmail.com</a> and I'll sort it out. Access is revoked immediately on refund.
+            <span className="font-medium text-text-1">Refunds —</span> 30-day no-questions-asked refund on any purchase. <Link to="/contact" className="text-accent hover:underline">Contact me</Link> and I'll sort it out. Access is revoked immediately on refund.
           </p>
           <p className="text-text-2 text-sm leading-relaxed">
             <span className="font-medium text-text-1">Cancellations —</span> Cancel your annual subscription anytime via the link in your purchase receipt. Access continues until the end of your current billing period — no proration, no partial refunds on cancel.
@@ -76,7 +76,7 @@ export default function About() {
           </p>
         </section>
 
-        <p className="text-text-3 text-sm">Made by Matt — <a href="mailto:mattmcx@gmail.com" className="hover:text-text-2 transition-colors">mattmcx@gmail.com</a></p>
+        <p className="text-text-3 text-sm">Made by Matt — <Link to="/contact" className="hover:text-text-2 transition-colors">get in touch</Link></p>
       </div>
     </div>
   )
