@@ -16,6 +16,7 @@ export const InboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('admin:timer_resume'),  admin_token: z.string() }),
   z.object({ type: z.literal('admin:timer_cancel'),  admin_token: z.string() }),
   z.object({ type: z.literal('admin:title_change'),  admin_token: z.string(), title: z.string().max(100) }),
+  z.object({ type: z.literal('admin:card_move'),     admin_token: z.string(), card_id: z.string(), column_id: z.string() }),
 ])
 
 export type InboundMessage = z.infer<typeof InboundSchema>

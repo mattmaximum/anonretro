@@ -1,14 +1,18 @@
 import { useState } from 'react'
+import { useDroppable } from '@dnd-kit/core'
 import type { CardData } from '@shared/messages'
 import Card from './Card.js'
 
 interface Props {
   name: string
+  columnId: string
   cards: CardData[]
   revealedIds: Set<string>
   revealSequence: string[]
   myVotes: Set<string>
   locked: boolean
+  isAdmin?: boolean
+  activeCardId?: string | null
   expandedCardId: string | null
   onExpandCard: (id: string | null) => void
   onAddCard: (content: string) => void
@@ -17,8 +21,9 @@ interface Props {
   onDelete: (cardId: string) => void
 }
 
-export default function Column({ name, cards, revealedIds, revealSequence, myVotes, locked, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete }: Props) {
+export default function Column({ name, columnId, cards, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete }: Props) {
   const [draft, setDraft] = useState('')
+  const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -52,9 +57,12 @@ export default function Column({ name, cards, revealedIds, revealSequence, myVot
         </button>
       </form>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-2">
-        {cards.length === 0 && (
+      {/* Cards — droppable zone */}
+      <div
+        ref={setNodeRef}
+        className={`flex flex-col gap-2 min-h-[72px] rounded transition-colors ${isOver && activeCardId ? 'ring-2 ring-accent/40 bg-accent/5' : ''}`}
+      >
+        {cards.length === 0 && !isOver && (
           <div className="border-dashed border border-border/40 bg-surface rounded flex items-center justify-center h-[72px]">
             <span className="text-text-3 text-xs">No cards yet</span>
           </div>
@@ -67,6 +75,8 @@ export default function Column({ name, cards, revealedIds, revealSequence, myVot
             revealIndex={revealSequence.indexOf(card.id)}
             myVotes={myVotes}
             locked={locked}
+            isAdmin={isAdmin}
+            isDraggingActive={activeCardId === card.id}
             isExpanded={expandedCardId === card.id}
             onExpand={() => onExpandCard(card.id)}
             onCollapse={() => onExpandCard(null)}

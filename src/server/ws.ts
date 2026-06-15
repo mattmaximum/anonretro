@@ -2,7 +2,7 @@ import type { WebSocket } from 'ws'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   getBoard, getCards, getCard, getParticipant, getParticipants,
-  insertCard, updateCard, deleteCard, voteToggleTx,
+  insertCard, updateCard, moveCard, deleteCard, voteToggleTx,
   updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateBoardTitle, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
@@ -386,6 +386,21 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           updateBoardTitle.run(title, boardId)
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcast(boardId, { type: 'title_changed', title })
+          break
+        }
+
+        case 'admin:card_move': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          if (!card || card.board_id !== boardId) return
+          const fmt = getFormat(board.format)
+          if (!fmt.columns.some(c => c.id === msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          const ts = Math.floor(Date.now() / 1000)
+          moveCard.run(msg.column_id, ts, msg.card_id, boardId)
+          updateBoardActivity.run(ts, boardId)
+          const ownerMap = buildIdentityMap(boardId)
+          const ownerOf = ownerMap.get(card.creator_token)
+          broadcastCardUpdate(boardId, { ...card, column_id: msg.column_id, updated_at: ts, _color: ownerOf?.color, _animal: ownerOf?.animal }, board.blur_enabled === 1)
           break
         }
       }

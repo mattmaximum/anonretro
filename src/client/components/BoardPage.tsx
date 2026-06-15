@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
 import { storage } from '../lib/storage.js'
 import { useWebSocket } from '../hooks/useWebSocket.js'
 import Column from './Column.js'
+import Card from './Card.js'
 import PresenceBar from './PresenceBar.js'
 import AdminPanel from './AdminPanel.js'
 import ShareModal from './ShareModal.js'
@@ -53,7 +56,12 @@ export default function BoardPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [unread, setUnread] = useState<Record<string, number>>({})
 
+  // Drag state (facilitator only)
+  const [activeCardId, setActiveCardId] = useState<string | null>(null)
+
   const reconnectCount = useRef(0)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   // ── Join flow ───────────────────────────────────────────────────────────────
 
@@ -205,6 +213,23 @@ export default function BoardPage() {
       send({ type: 'admin:title_change', admin_token: adminToken, title: trimmed })
     }
     setEditingTitle(false)
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveCardId(event.active.id as string)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveCardId(null)
+    const { active, over } = event
+    if (!over || !adminToken) return
+    const cardId = active.id as string
+    const targetColumnId = over.id as string
+    const card = cards.find(c => c.id === cardId)
+    if (!card || card.column_id === targetColumnId) return
+    // Optimistic update
+    setCards(prev => prev.map(c => c.id === cardId ? { ...c, column_id: targetColumnId } : c))
+    send({ type: 'admin:card_move', admin_token: adminToken, card_id: cardId, column_id: targetColumnId })
   }
 
   // Keep browser tab title in sync
@@ -377,28 +402,43 @@ export default function BoardPage() {
         {/* Columns — desktop */}
         <main className="flex-1 p-4 overflow-auto">
           {/* Desktop: grid */}
-          <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
-            {fmt.columns.map(col => (
-              <Column
-                key={col.id}
-                name={col.label}
-                cards={cards.filter(c => c.column_id === col.id)}
-                revealedIds={revealedIds}
-                revealSequence={revealSequence}
-                myVotes={myVotes}
-                locked={boardLocked}
-                expandedCardId={expandedCardId}
-                onExpandCard={setExpandedCardId}
-                onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
-                onVote={cardId => {
-                  setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
-                  send({ type: 'vote:toggle', card_id: cardId })
-                }}
-                onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
-                onDelete={cardId => send({ type: 'card:delete', id: cardId })}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
+              {fmt.columns.map(col => (
+                <Column
+                  key={col.id}
+                  name={col.label}
+                  columnId={col.id}
+                  cards={cards.filter(c => c.column_id === col.id)}
+                  revealedIds={revealedIds}
+                  revealSequence={revealSequence}
+                  myVotes={myVotes}
+                  locked={boardLocked}
+                  isAdmin={isAdmin}
+                  activeCardId={activeCardId}
+                  expandedCardId={expandedCardId}
+                  onExpandCard={setExpandedCardId}
+                  onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
+                  onVote={cardId => {
+                    setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
+                    send({ type: 'vote:toggle', card_id: cardId })
+                  }}
+                  onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
+                  onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+                />
+              ))}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeCardId ? (() => {
+                const card = cards.find(c => c.id === activeCardId)
+                return card ? (
+                  <div className="bg-surface border border-accent/60 rounded p-3 shadow-xl rotate-1 text-sm text-text-1 opacity-95 max-w-xs">
+                    {card.blur ? <span className="italic text-text-3">Hidden card</span> : card.content}
+                  </div>
+                ) : null
+              })() : null}
+            </DragOverlay>
+          </DndContext>
 
           {/* Mobile: tabs */}
           <div className="md:hidden flex flex-col gap-4">

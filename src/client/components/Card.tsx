@@ -1,4 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
+import { useDraggable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import type { CardData } from '@shared/messages'
 
 interface Props {
@@ -7,6 +9,8 @@ interface Props {
   revealIndex: number
   locked: boolean
   isExpanded: boolean
+  isAdmin?: boolean
+  isDraggingActive?: boolean
   onExpand: () => void
   onCollapse: () => void
   onVote: (cardId: string) => void
@@ -16,11 +20,16 @@ interface Props {
 }
 
 
-export default function Card({ card, revealedIds, revealIndex, locked, isExpanded, onExpand, onCollapse, onVote, onEdit, onDelete, myVotes }: Props) {
+export default function Card({ card, revealedIds, revealIndex, locked, isExpanded, isAdmin, isDraggingActive, onExpand, onCollapse, onVote, onEdit, onDelete, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.content)
   const contentRef = useRef<HTMLParagraphElement>(null)
   const [isClamped, setIsClamped] = useState(false)
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: card.id,
+    disabled: !isAdmin || locked,
+  })
 
   // Detect whether the content actually overflows 5 lines (only meaningful when collapsed)
   useLayoutEffect(() => {
@@ -37,16 +46,39 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
   const isRevealing = revealedIds.has(card.id)
   const voted = myVotes.has(card.id)
 
+  const dragStyle = transform ? { transform: CSS.Translate.toString(transform) } : {}
   const revealStyle = isRevealing
     ? { transition: `opacity 0.4s ease ${revealIndex * 50}ms` }
     : {}
 
   return (
     <div
-      className="bg-surface border border-border rounded p-3 flex flex-col gap-2 group"
-      style={revealStyle}
+      ref={setNodeRef}
+      className={`bg-surface border border-border rounded p-3 flex gap-2 group ${isDragging || isDraggingActive ? 'opacity-40' : ''}`}
+      style={{ ...dragStyle, ...revealStyle }}
       role="article"
+      {...attributes}
     >
+      {/* Drag handle — facilitator only */}
+      {isAdmin && !locked && (
+        <button
+          {...listeners}
+          className="flex-shrink-0 text-text-3 hover:text-text-2 cursor-grab active:cursor-grabbing self-start mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity touch-none"
+          aria-label="Drag to move card"
+          tabIndex={-1}
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
+            <circle cx="2.5" cy="2.5" r="1.5"/>
+            <circle cx="7.5" cy="2.5" r="1.5"/>
+            <circle cx="2.5" cy="8" r="1.5"/>
+            <circle cx="7.5" cy="8" r="1.5"/>
+            <circle cx="2.5" cy="13.5" r="1.5"/>
+            <circle cx="7.5" cy="13.5" r="1.5"/>
+          </svg>
+        </button>
+      )}
+
+      <div className="flex flex-col gap-2 flex-1 min-w-0">
       {card.blur ? (
         <>
           <p className="text-sm italic leading-relaxed select-none text-text-1" aria-label="Hidden card">{card.content}</p>
@@ -133,6 +165,7 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
             <span>{card.votes}</span>
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

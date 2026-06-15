@@ -242,6 +242,10 @@ export const updateCard = db.prepare<[string, number, string]>(
   'UPDATE cards SET content = ?, updated_at = ? WHERE id = ?'
 )
 
+export const moveCard = db.prepare<[string, number, string, string]>(
+  'UPDATE cards SET column_id = ?, updated_at = ? WHERE id = ? AND board_id = ?'
+)
+
 export const deleteCard = db.prepare<[string]>(
   'DELETE FROM cards WHERE id = ?'
 )
