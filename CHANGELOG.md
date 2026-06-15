@@ -9,6 +9,21 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.4.0] — 2026-06-14
+
+### Added
+
+- **Contact form (`/contact`)** — name, email, category (Billing / Support / Feature Request / General), and message. Submissions delivered via [Resend](https://resend.com) to the owner with `reply_to` set to the sender — personal email never exposed in the app.
+- **Refund & cancellation policy in upgrade modal** — both the main upgrade modal and the Annual→Lifetime upgrade-only modal now show a "30-day refund · cancel anytime" one-liner with a link to the policy on the About page.
+
+### Changed
+
+- **Privacy Policy** — replaced all `mailto:` personal email links with `/contact` page links (account deletion, your rights, contact section).
+- **About page** — added `id="refunds"` anchor to the Refunds & cancellations section for direct linking from the upgrade modal.
+- **PM2 configs** — `ecosystem.config.cjs` and `ecosystem.staging.config.cjs` now pass `RESEND_API_KEY`, `CONTACT_EMAIL`, and `CONTACT_FROM` to the server process.
+
+---
+
 ## [0.3.0] — 2026-06-14
 
 ### Added
