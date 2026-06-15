@@ -12,7 +12,7 @@ export interface RetroFormat {
 export const FORMATS: RetroFormat[] = [
   {
     id: 'well-unwell-actions',
-    name: 'What went well / Unwell / Suggestions',
+    name: 'Well / Unwell / Suggestions',
     columns: [
       { id: 'went-well',     label: '✅ What went well' },
       { id: 'didnt-go-well', label: "❌ What didn't go well" },
