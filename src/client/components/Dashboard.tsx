@@ -102,8 +102,9 @@ export default function Dashboard() {
     })
   }
 
-  function formatExpiry(lastActivityAt: number): string {
-    const msLeft = (lastActivityAt + 2592000) * 1000 - Date.now()
+  function formatExpiry(lastActivityAt: number, ownerIsPro: boolean): string {
+    const expirySeconds = ownerIsPro ? 31536000 : 604800
+    const msLeft = (lastActivityAt + expirySeconds) * 1000 - Date.now()
     if (msLeft <= 0) return 'Expired'
     const dLeft = Math.floor(msLeft / 86_400_000)
     const hLeft = Math.floor((msLeft % 86_400_000) / 3_600_000)
@@ -214,7 +215,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 <p className="text-text-3 text-xs mt-0.5">
-                  Last activity {formatDate(board.last_activity_at)} · {board.format} · {formatExpiry(board.last_activity_at)}
+                  Last activity {formatDate(board.last_activity_at)} · {board.format} · {formatExpiry(board.last_activity_at, data.isPro || data.isLifetime)}
                 </p>
               </div>
 

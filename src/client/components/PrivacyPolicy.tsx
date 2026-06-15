@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Data retention</h2>
           <div className="flex flex-col gap-2 text-sm text-text-2 leading-relaxed">
-            <p><span className="text-text-1 font-medium">Boards.</span> Boards and all associated data (cards, votes, participants) are automatically hard-deleted 30 days after the last activity on the board. Activity includes any card write, vote, timer action, or facilitator control. The expiry clock resets on each action — actively-used boards persist longer. The expiration countdown is shown in the board header.</p>
+            <p><span className="text-text-1 font-medium">Boards.</span> Boards and all associated data (cards, votes, participants) are automatically hard-deleted after inactivity. Free boards expire after 7 days; boards owned by paid accounts expire after 1 year. The expiry clock resets on deliberate facilitator actions (reveal, lock, timer, card moves). The expiration countdown is shown in the board header.</p>
             <p><span className="text-text-1 font-medium">Facilitator accounts.</span> Account data (email, Clerk user ID) is retained while the account is active. Boards deleted by the facilitator are removed immediately and permanently.</p>
             <p><span className="text-text-1 font-medium">Server logs.</span> Nginx access logs are rotated and deleted after 14 days.</p>
           </div>
@@ -87,7 +87,7 @@ export default function PrivacyPolicy() {
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Your rights</h2>
           <div className="flex flex-col gap-2 text-sm text-text-2 leading-relaxed">
-            <p><span className="text-text-1 font-medium">Participants.</span> We collect no personal information about participants and cannot identify you. There is no personal data to access, correct, or delete on your behalf. Board content is automatically deleted after 30 days of inactivity.</p>
+            <p><span className="text-text-1 font-medium">Participants.</span> We collect no personal information about participants and cannot identify you. There is no personal data to access, correct, or delete on your behalf. Board content is automatically deleted after 7 days of inactivity (1 year for boards owned by paid accounts).</p>
             <p><span className="text-text-1 font-medium">Facilitators.</span> You can delete individual boards at any time from the dashboard — deletion is immediate and permanent. To request deletion of your account and all associated data, <Link to="/contact" className="text-accent hover:underline">contact me</Link>.</p>
           </div>
         </section>

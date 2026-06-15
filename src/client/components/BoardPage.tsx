@@ -266,7 +266,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6">
         <p className="text-text-1 text-lg font-medium">This board has expired.</p>
-        <p className="text-text-2 text-sm">Boards are automatically deleted after 30 days of inactivity.</p>
+        <p className="text-text-2 text-sm">Boards are automatically deleted after 7 days of inactivity.</p>
         <a href="/" className="text-accent hover:underline text-sm mt-2">Start a new retro →</a>
       </div>
     )
@@ -521,7 +521,7 @@ function RetentionBox({ lastActivityAt, ownerIsPro }: { lastActivityAt: number |
   useEffect(() => {
     if (!lastActivityAt) return
     function update() {
-      const expirySeconds = ownerIsPro ? 31536000 : 2592000
+      const expirySeconds = ownerIsPro ? 31536000 : 604800
       const expiresAt = (lastActivityAt! + expirySeconds) * 1000
       const msLeft = expiresAt - Date.now()
       if (msLeft <= 0) { setLabel('Board expired'); return }

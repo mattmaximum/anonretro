@@ -12,7 +12,7 @@ Live at **[anonretro.com](https://anonretro.com)**
 
 When people can see each other's cards as they're written, they anchor on the first thing posted. The loudest voice sets the tone before the conversation starts. AnonRetro eliminates that: everyone writes independently, cards are hidden until reveal, and everything surfaces at once.
 
-Participants join via a shared link with no account required. The facilitator (board creator) needs an account. Boards hard-delete after 30 days of inactivity.
+Participants join via a shared link with no account required. The facilitator (board creator) needs an account. Free boards hard-delete after 7 days of inactivity; paid accounts get 1 year.
 
 ---
 
@@ -119,8 +119,8 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 
 ### Retention
 
-- Boards hard-deleted after **30 days of inactivity**
-- Expiration countdown shown in the board header (e.g. `Expires in 28d`, or `6d 14h` under 7 days)
+- Boards hard-deleted after **7 days of inactivity** (free) or **1 year** (paid)
+- Expiration countdown shown in the board header (e.g. `Expires in 6d`, or `6d 14h` under 7 days)
 - Purge job runs every 6 hours
 - Eviction safety net: if board count exceeds 5,000, oldest inactive boards are deleted first
 

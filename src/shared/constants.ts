@@ -1,6 +1,6 @@
 export const BOARD_CAPACITY = 100
 export const CARD_MAX_LENGTH = 500
-export const BOARD_EXPIRY_SECONDS = 2592000     // 30 days (free)
+export const BOARD_EXPIRY_SECONDS = 604800       // 7 days (free)
 export const BOARD_EXPIRY_PRO_SECONDS = 31536000 // 1 year (paid)
 export const EVICTION_LIMIT = 100_000
 

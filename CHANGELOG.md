@@ -9,6 +9,23 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.5.0] — 2026-06-15
+
+### Added
+
+- **Drag cards between columns (facilitator only)** — grip handle appears on card hover for the facilitator; cards can be dragged to any column. Participants see the move in real time via WebSocket broadcast. Drag is desktop-only; board lock disables dragging.
+- **1-year board retention for paid users** — free boards still expire after 7 days of inactivity; boards owned by paid accounts (annual or lifetime) now expire after 1 year. Expiry is checked at purge time via a join on `owner_id → users`, so upgrading immediately extends all existing boards with no backfill needed.
+- **Dashboard expiry fix for paid users** — the board list now shows the correct expiry window per account tier instead of always showing the free-tier countdown.
+
+### Changed
+
+- **Free board expiry reduced from 30 days to 7 days** — stronger differentiator vs. paid (52× longer), faster DB cleanup, and free boards still outlast the typical retro-to-debrief window.
+- **Well / Unwell / Actions → Well / Unwell / Suggestions** — column label and format name updated to avoid confusion with tracked action items (coming in a future release). The stored `column_id` stays `'actions'` so no migration needed for existing boards.
+- **Privacy policy** — updated data retention section to reflect the new 7-day / 1-year split and corrected the description of what resets the expiry clock (deliberate facilitator actions only, not participant card writes or votes).
+- **Deploy script** — switched from `npm ci` to `npm install` to handle lockfile drift when packages are added via bun.
+
+---
+
 ## [0.4.0] — 2026-06-14
 
 ### Added
@@ -119,8 +136,8 @@ Built as a side project to solve a real pain point, and designed to cover its ow
 - Dashboard at `/dashboard`: manage boards, rename, delete, view expiration
 
 **Retention**
-- Boards hard-deleted after 30 days of inactivity
-- Expiration countdown in board header (`28d`, or `6d 14h` under 7 days)
+- Boards hard-deleted after 7 days of inactivity (free) or 1 year (paid)
+- Expiration countdown in board header (`6d`, or `6d 14h` under 7 days)
 - Purge job runs every 6 hours
 - Safety net eviction at 5,000 boards
 

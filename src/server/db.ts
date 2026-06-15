@@ -298,7 +298,7 @@ export const countHotBoards = db.prepare<[number]>(
 )
 
 export const deleteExpiredBoards = db.transaction((freeCutoff: number, proCutoff: number) => {
-  // Paid users (is_pro=1 or is_lifetime=1) get 1-year retention; free users get 30 days.
+  // Paid users (is_pro=1 or is_lifetime=1) get 1-year retention; free users get 7 days.
   // A board with no owner_id (anonymous facilitator) is treated as free.
   const expiredIds = `
     SELECT b.id FROM boards b
