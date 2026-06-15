@@ -63,7 +63,7 @@ export default function About() {
           </p>
         </section>
 
-        <section className="flex flex-col gap-3">
+        <section id="refunds" className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Refunds &amp; cancellations</h2>
           <p className="text-text-2 text-sm leading-relaxed">
             <span className="font-medium text-text-1">Refunds —</span> 30-day no-questions-asked refund on any purchase. <Link to="/contact" className="text-accent hover:underline">Contact me</Link> and I'll sort it out. Access is revoked immediately on refund.

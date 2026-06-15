@@ -60,6 +60,9 @@ npm start         # serve production build on :3000
 | `LEMON_SQUEEZY_WEBHOOK_SECRET` | Production | HMAC secret for verifying incoming LS webhook signatures |
 | `LEMON_SQUEEZY_LIFETIME_VARIANT_ID` | Production | LS variant ID for the $29 lifetime product — used to branch refund logic |
 | `LEMON_SQUEEZY_UPGRADE_VARIANT_ID` | Production | LS variant ID for the $11 upgrade product — used to branch refund logic |
+| `RESEND_API_KEY` | Production | Resend API key for sending contact form emails (`re_...`) |
+| `CONTACT_EMAIL` | Production | Destination address for contact form submissions (owner's email) |
+| `CONTACT_FROM` | No | From address for contact form emails (default: `contact@anonretro.com`) |
 
 Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set — you can create boards freely without signing in.
 
@@ -126,6 +129,12 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 - Column tabs with unread badge counts
 - Admin controls in a FAB (bottom-right) opening a bottom sheet
 
+### Contact form
+
+- `/contact` — name, email, category (Billing / Support / Feature Request / General), message
+- Submissions sent via [Resend](https://resend.com) to the owner; `reply_to` set to sender so replies go directly back — owner email never exposed in the app
+- Rate-limited to 5 req/10 min per IP
+
 ### Other
 
 - Light / dark mode toggle (respects OS preference on first visit)
@@ -163,6 +172,7 @@ src/
 | Hosting | Hetzner VPS (2 GB RAM, Ubuntu) |
 | Auth | Clerk (JWT verification, email/password, webhooks) |
 | Payments | Lemon Squeezy (Merchant of Record — handles VAT/GST globally) |
+| Transactional email | Resend (contact form — sends from `contact@anonretro.com`) |
 
 ### Key design decisions
 

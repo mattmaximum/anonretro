@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 const LS_CHECKOUT_LIFETIME = import.meta.env.VITE_LS_CHECKOUT_LIFETIME as string | undefined
 const LS_CHECKOUT_ANNUAL = import.meta.env.VITE_LS_CHECKOUT_ANNUAL as string | undefined
@@ -79,6 +80,7 @@ export default function UpgradeModal({ clerkUserId, onClose, upgradeOnly = false
                 </button>
               )}
             </div>
+            <p className="text-text-3 text-xs text-center">30-day refund · <Link to="/about#refunds" onClick={onClose} className="hover:text-text-2 underline transition-colors">Refund &amp; cancellation policy</Link></p>
           </>
         ) : (
           <>
@@ -139,6 +141,7 @@ export default function UpgradeModal({ clerkUserId, onClose, upgradeOnly = false
                 )}
               </div>
             </div>
+            <p className="text-text-3 text-xs text-center">30-day refund · cancel anytime · <Link to="/about#refunds" onClick={onClose} className="hover:text-text-2 underline transition-colors">Refund &amp; cancellation policy</Link></p>
           </>
         )}
 

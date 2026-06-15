@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate()
@@ -45,7 +45,7 @@ export default function PrivacyPolicy() {
             <p><span className="text-text-1 font-medium">Account required.</span> Board creators sign in via <a href="https://clerk.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Clerk</a>, a third-party authentication provider. Clerk collects and stores your email address and manages your credentials. See <a href="https://clerk.com/privacy" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Clerk's privacy policy</a> for details on how they handle your data.</p>
             <p><span className="text-text-1 font-medium">What we store.</span> We store your Clerk user ID and email address in our database, linked to the boards you create. This is used to enforce board ownership, apply the free-tier board limit, and allow you to manage your boards from the dashboard.</p>
             <p><span className="text-text-1 font-medium">Paid accounts.</span> Payments are processed by <a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Lemon Squeezy</a>, who acts as the Merchant of Record. We do not see or store your payment card details. We store only your Lemon Squeezy order ID and a flag indicating your account is paid. See <a href="https://www.lemonsqueezy.com/privacy" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Lemon Squeezy's privacy policy</a> for details.</p>
-            <p><span className="text-text-1 font-medium">Account deletion.</span> To delete your account and all associated boards, email <a href="mailto:mattmcx@gmail.com" className="text-accent hover:underline">mattmcx@gmail.com</a>. All boards and card content owned by your account will be permanently deleted.</p>
+            <p><span className="text-text-1 font-medium">Account deletion.</span> To delete your account and all associated boards, <Link to="/contact" className="text-accent hover:underline">contact me</Link>. All boards and card content owned by your account will be permanently deleted.</p>
           </div>
         </section>
 
@@ -88,15 +88,15 @@ export default function PrivacyPolicy() {
           <h2 className="text-base font-semibold text-text-1">Your rights</h2>
           <div className="flex flex-col gap-2 text-sm text-text-2 leading-relaxed">
             <p><span className="text-text-1 font-medium">Participants.</span> We collect no personal information about participants and cannot identify you. There is no personal data to access, correct, or delete on your behalf. Board content is automatically deleted after 30 days of inactivity.</p>
-            <p><span className="text-text-1 font-medium">Facilitators.</span> You can delete individual boards at any time from the dashboard — deletion is immediate and permanent. To request deletion of your account and all associated data, email <a href="mailto:mattmcx@gmail.com" className="text-accent hover:underline">mattmcx@gmail.com</a>.</p>
+            <p><span className="text-text-1 font-medium">Facilitators.</span> You can delete individual boards at any time from the dashboard — deletion is immediate and permanent. To request deletion of your account and all associated data, <Link to="/contact" className="text-accent hover:underline">contact me</Link>.</p>
           </div>
         </section>
 
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-text-1">Contact</h2>
           <p className="text-text-2 text-sm leading-relaxed">
-            Questions about this policy can be sent to{' '}
-            <a href="mailto:mattmcx@gmail.com" className="text-accent hover:underline">mattmcx@gmail.com</a>.
+            Questions about this policy can be sent via the{' '}
+            <Link to="/contact" className="text-accent hover:underline">contact form</Link>.
           </p>
         </section>
       </div>
