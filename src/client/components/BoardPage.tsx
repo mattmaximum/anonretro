@@ -4,12 +4,13 @@ import { UserButton, useUser } from '@clerk/react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
-import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
+import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
 import { storage } from '../lib/storage.js'
 import { useWebSocket } from '../hooks/useWebSocket.js'
 import Column from './Column.js'
 import Card from './Card.js'
+import GroupModal from './GroupModal.js'
 import PresenceBar from './PresenceBar.js'
 import AdminPanel from './AdminPanel.js'
 import ShareModal from './ShareModal.js'
@@ -24,6 +25,7 @@ export default function BoardPage() {
 
   // Board state
   const [cards, setCards] = useState<CardData[]>([])
+  const [groups, setGroups] = useState<GroupData[]>([])
   const [participants, setParticipants] = useState<ParticipantData[]>([])
   const [blurEnabled, setBlurEnabled] = useState(true)
   const [boardLocked, setBoardLocked] = useState(false)
@@ -61,9 +63,21 @@ export default function BoardPage() {
   // Drag state (facilitator only)
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
 
+  // Group modal
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null)
+
+  // Track pointer Y for 3-way collision detection (gap vs stack zone)
+  const pointerYRef = useRef(0)
+
   const reconnectCount = useRef(0)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  useEffect(() => {
+    function track(e: PointerEvent) { pointerYRef.current = e.clientY }
+    window.addEventListener('pointermove', track, { passive: true })
+    return () => window.removeEventListener('pointermove', track)
+  }, [])
 
   // ── Join flow ───────────────────────────────────────────────────────────────
 
@@ -108,6 +122,7 @@ export default function BoardPage() {
         setBlurEnabled(msg.blur_enabled)
         setBoardLocked(msg.locked)
         setCards(msg.cards)
+        setGroups(msg.groups)
         setParticipants(msg.participants)
         setTimer(msg.timer)
         setMyVotes(new Set(msg.my_voted_card_ids))
@@ -176,6 +191,7 @@ export default function BoardPage() {
 
       case 'cards_reordered':
         setCards(msg.cards)
+        setGroups(msg.groups)
         break
 
       case 'board_deleted':
@@ -231,31 +247,98 @@ export default function BoardPage() {
     const { active, over } = event
     if (!over || !adminToken) return
 
-    const cardId = active.id as string
+    const activeId = active.id as string
     const overId = over.id as string
-    const card = cards.find(c => c.id === cardId)
+    const isActiveGroup = activeId.startsWith('group:')
+    const isOverGroup = overId.startsWith('group:')
+    const columnIdSet = new Set(fmt.columns.map(c => c.id))
+
+    // ── Drop on column background/header ──
+    if (columnIdSet.has(overId)) {
+      if (isActiveGroup) {
+        const groupId = activeId.slice('group:'.length)
+        const group = groups.find(g => g.id === groupId)
+        if (!group || group.column_id === overId) return
+        // Optimistic: move group and its children to target column
+        setGroups(prev => prev.map(g => g.id === groupId ? { ...g, column_id: overId } : g))
+        send({ type: 'admin:card_group_move', admin_token: adminToken, group_id: groupId, column_id: overId })
+      } else {
+        const card = cards.find(c => c.id === activeId)
+        if (!card || card.column_id === overId) return
+        setCards(prev => prev.map(c => c.id === activeId ? { ...c, column_id: overId } : c))
+        send({ type: 'admin:card_move', admin_token: adminToken, card_id: activeId, column_id: overId })
+      }
+      return
+    }
+
+    // ── Group being reordered in column ──
+    if (isActiveGroup) {
+      const groupId = activeId.slice('group:'.length)
+      const group = groups.find(g => g.id === groupId)
+      if (!group) return
+      const overColId = isOverGroup
+        ? groups.find(g => g.id === overId.slice('group:'.length))?.column_id
+        : cards.find(c => c.id === overId)?.column_id
+      if (!overColId || overColId !== group.column_id) return
+      // Compute new index in the merged column order
+      const colItems = getMergedColumnItems(cards, groups, group.column_id)
+      const oldIdx = colItems.findIndex(i => i === activeId)
+      const newIdx = colItems.findIndex(i => i === overId)
+      if (oldIdx === newIdx || newIdx === -1) return
+      send({ type: 'admin:card_group_reorder', admin_token: adminToken, group_id: groupId, column_id: group.column_id, new_index: newIdx })
+      return
+    }
+
+    // ── Card being dragged ──
+    const card = cards.find(c => c.id === activeId)
     if (!card) return
 
-    const columnIds = new Set(fmt.columns.map(c => c.id))
+    if (isOverGroup) {
+      // Card dropped on a group → add to group
+      const groupId = overId.slice('group:'.length)
+      const group = groups.find(g => g.id === groupId)
+      if (!group || group.column_id !== card.column_id) return
+      // Optimistic: remove from top-level cards, add to group's child_cards
+      setCards(prev => prev.filter(c => c.id !== activeId))
+      setGroups(prev => prev.map(g => g.id === groupId
+        ? { ...g, child_cards: [...g.child_cards, { ...card, group_id: groupId }] }
+        : g
+      ))
+      send({ type: 'admin:card_group_add', admin_token: adminToken, card_id: activeId, group_id: groupId })
+      return
+    }
 
-    if (columnIds.has(overId)) {
-      // Dropped on column area → cross-column move
-      if (card.column_id === overId) return
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, column_id: overId } : c))
-      send({ type: 'admin:card_move', admin_token: adminToken, card_id: cardId, column_id: overId })
+    // ── Card dropped on another card ──
+    const overCard = cards.find(c => c.id === overId)
+    if (!overCard || card.column_id !== overCard.column_id) return
+
+    // 3-way detection: check pointer Y vs over card's bounding rect
+    const overRect = over.rect
+    const py = pointerYRef.current
+    const inCenterZone = py > overRect.top + overRect.height * 0.2
+      && py < overRect.top + overRect.height * 0.8
+
+    if (inCenterZone) {
+      // Stack: create group from two cards
+      // Optimistic: remove both from top-level (server will send cards_reordered)
+      setCards(prev => prev.filter(c => c.id !== activeId && c.id !== overId))
+      send({ type: 'admin:card_group_create', admin_token: adminToken, card_id: activeId, target_card_id: overId })
     } else {
-      // Dropped on a card → reorder within same column
-      const overCard = cards.find(c => c.id === overId)
-      if (!overCard || card.column_id !== overCard.column_id) return
+      // Gap zone → reorder
       const columnCards = cards.filter(c => c.column_id === card.column_id)
-      const oldIndex = columnCards.findIndex(c => c.id === cardId)
+      const oldIndex = columnCards.findIndex(c => c.id === activeId)
       const newIndex = columnCards.findIndex(c => c.id === overId)
       if (oldIndex === newIndex) return
-      // Optimistic reorder
       const reordered = arrayMove(columnCards, oldIndex, newIndex)
       setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
-      send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: cardId, column_id: card.column_id, new_index: newIndex })
+      send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: newIndex })
     }
+  }
+
+  function getMergedColumnItems(allCards: CardData[], allGroups: GroupData[], columnId: string): string[] {
+    const colCards = allCards.filter(c => c.column_id === columnId).map(c => ({ id: c.id, pos: c.position }))
+    const colGroups = allGroups.filter(g => g.column_id === columnId).map(g => ({ id: `group:${g.id}`, pos: g.position }))
+    return [...colCards, ...colGroups].sort((a, b) => a.pos - b.pos).map(i => i.id)
   }
 
   // Keep browser tab title in sync
@@ -424,6 +507,34 @@ export default function BoardPage() {
         </div>
       )}
 
+      {/* Group modal */}
+      {openGroupId && (() => {
+        const group = groups.find(g => g.id === openGroupId)
+        return group ? (
+          <GroupModal
+            group={group}
+            isAdmin={isAdmin}
+            locked={boardLocked}
+            myVotes={myVotes}
+            blurEnabled={blurEnabled}
+            onClose={() => setOpenGroupId(null)}
+            onVote={cardId => {
+              setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
+              send({ type: 'vote:toggle', card_id: cardId })
+            }}
+            onUnstack={(cardId, groupId) => {
+              if (!adminToken) return
+              send({ type: 'admin:card_unstack', admin_token: adminToken, card_id: cardId, group_id: groupId })
+              // Optimistic: remove card from group's child_cards
+              setGroups(prev => prev.map(g => g.id === groupId
+                ? { ...g, child_cards: g.child_cards.filter(c => c.id !== cardId) }
+                : g
+              ))
+            }}
+          />
+        ) : null
+      })()}
+
       <div className="flex flex-1 min-h-0">
         {/* Columns — desktop */}
         <main className="flex-1 p-4 overflow-auto">
@@ -436,6 +547,7 @@ export default function BoardPage() {
                   name={col.label}
                   columnId={col.id}
                   cards={cards.filter(c => c.column_id === col.id)}
+                  groups={groups.filter(g => g.column_id === col.id)}
                   revealedIds={revealedIds}
                   revealSequence={revealSequence}
                   myVotes={myVotes}
@@ -451,11 +563,21 @@ export default function BoardPage() {
                   }}
                   onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
                   onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+                  onOpenGroupModal={setOpenGroupId}
                 />
               ))}
             </div>
             <DragOverlay dropAnimation={null}>
               {activeCardId ? (() => {
+                const isGroup = activeCardId.startsWith('group:')
+                if (isGroup) {
+                  const group = groups.find(g => `group:${g.id}` === activeCardId)
+                  return group ? (
+                    <div className="bg-surface border border-accent/60 rounded p-3 shadow-xl rotate-1 text-sm text-text-1 opacity-95 max-w-xs">
+                      <span className="text-text-2">{group.child_cards.length} grouped cards</span>
+                    </div>
+                  ) : null
+                }
                 const card = cards.find(c => c.id === activeCardId)
                 return card ? (
                   <div className="bg-surface border border-accent/60 rounded p-3 shadow-xl rotate-1 text-sm text-text-1 opacity-95 max-w-xs">
@@ -496,6 +618,7 @@ export default function BoardPage() {
               name={fmt.columns[activeTab].label}
               columnId={fmt.columns[activeTab].id}
               cards={cards.filter(c => c.column_id === fmt.columns[activeTab].id)}
+              groups={groups.filter(g => g.column_id === fmt.columns[activeTab].id)}
               revealedIds={revealedIds}
               revealSequence={revealSequence}
               myVotes={myVotes}
@@ -509,6 +632,7 @@ export default function BoardPage() {
               }}
               onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
               onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+              onOpenGroupModal={setOpenGroupId}
             />
           </div>
         </main>

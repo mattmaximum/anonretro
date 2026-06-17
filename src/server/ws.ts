@@ -7,10 +7,14 @@ import {
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
   getMaxPositionInColumn, updateCardPosition, reorderCardTx,
+  getCardGroupsByBoard, getCardsByGroup,
+  createCardGroupTx, addCardToGroupTx, unstackCardTx, moveCardGroupTx,
+  getCardGroup, getMaxGroupPositionInColumn, updateCardGroupPosition,
 } from './db.js'
+import db from './db.js'
 import { nanoid } from 'nanoid'
 import { InboundSchema } from '../shared/messages.js'
-import type { OutboundMessage, CardData, ParticipantData } from '../shared/messages.js'
+import type { OutboundMessage, CardData, GroupData, ParticipantData } from '../shared/messages.js'
 import { getFormat } from '../shared/formats.js'
 import { CARD_MAX_LENGTH, BOARD_EXPIRY_SECONDS } from '../shared/constants.js'
 import { armTimer, disarmTimer } from './timer.js'
@@ -85,7 +89,7 @@ export function scrambleContent(content: string, cardId: string): string {
 // ── Per-recipient card shape ──────────────────────────────────────────────────
 
 export function buildCard(
-  row: { id: string; column_id: string; content: string; creator_token: string; votes: number; created_at: number; _color?: string; _animal?: string },
+  row: { id: string; column_id: string; content: string; creator_token: string; votes: number; created_at: number; position?: number | null; group_id?: string | null; _color?: string; _animal?: string },
   viewerToken: string,
   blurEnabled: boolean,
 ): CardData {
@@ -98,10 +102,23 @@ export function buildCard(
     content:    blur ? scrambleContent(row.content, row.id) : row.content,
     blur,
     votes:      row.votes,
-    author,                // always send — never scramble the author
+    author,
     is_own:     isOwn,
     created_at: row.created_at,
+    position:   row.position ?? row.created_at,
+    group_id:   row.group_id ?? null,
   }
+}
+
+function buildGroups(boardId: string, iMap: Map<string, { color: string; animal: string }>, viewerToken: string, blurEnabled: boolean): GroupData[] {
+  const groups = getCardGroupsByBoard.all(boardId) as any[]
+  return groups.map(g => {
+    const children = (getCardsByGroup.all(g.id) as any[]).map(c => {
+      const row = { ...c, _color: iMap.get(c.creator_token)?.color, _animal: iMap.get(c.creator_token)?.animal }
+      return buildCard(row, viewerToken, blurEnabled)
+    })
+    return { id: g.id, column_id: g.column_id, position: g.position, child_cards: children } as GroupData
+  })
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,6 +184,52 @@ function broadcastAllCardsToEach(boardId: string, cards: any[], iMap: Map<string
   }
 }
 
+function broadcastCardsReordered(boardId: string, blurEnabled: boolean) {
+  const iMap = buildIdentityMap(boardId)
+  const allCards = getCards.all(boardId) as any[]
+  const sockets = boardSockets.get(boardId)
+  if (!sockets) return
+  const tokenBySocket = new Map<WebSocket, string>()
+  for (const [tok, sockWs] of participantSockets) {
+    if (sockets.has(sockWs)) tokenBySocket.set(sockWs, tok)
+  }
+  for (const [sockWs, viewerToken] of tokenBySocket) {
+    const perViewerCards = allCards
+      .filter((c: any) => !c.group_id)
+      .map((c: any) => buildCard({ ...c, _color: iMap.get(c.creator_token)?.color, _animal: iMap.get(c.creator_token)?.animal }, viewerToken, blurEnabled))
+    const perViewerGroups = buildGroups(boardId, iMap, viewerToken, blurEnabled)
+    send(sockWs, { type: 'cards_reordered', cards: perViewerCards, groups: perViewerGroups })
+  }
+}
+
+function reorderGroupInColumnTx(boardId: string, groupId: string, columnId: string, newIndex: number) {
+  type PosRow = { id: string; position: number; kind: 'card' | 'group' }
+  const ungroupedCards = db.prepare<[string, string]>(
+    "SELECT id, position, 'card' as kind FROM cards WHERE board_id = ? AND column_id = ? AND group_id IS NULL ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+  const groups = db.prepare<[string, string]>(
+    "SELECT id, position, 'group' as kind FROM card_groups WHERE board_id = ? AND column_id = ? ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+
+  const all = [...ungroupedCards, ...groups].sort((a, b) => a.position - b.position)
+  const fromIndex = all.findIndex(r => r.id === groupId)
+  if (fromIndex === -1) return false
+
+  const reordered = [...all]
+  reordered.splice(fromIndex, 1)
+  const clampedIndex = Math.min(newIndex, reordered.length)
+  reordered.splice(clampedIndex, 0, all[fromIndex])
+
+  for (let i = 0; i < reordered.length; i++) {
+    if (reordered[i].kind === 'card') {
+      updateCardPosition.run(i + 1, reordered[i].id)
+    } else {
+      updateCardGroupPosition.run(i + 1, reordered[i].id)
+    }
+  }
+  return true
+}
+
 // ── Rate limiter ──────────────────────────────────────────────────────────────
 
 const rateLimits = new Map<string, { count: number; windowStart: number }>()
@@ -209,10 +272,12 @@ export default async function wsRoutes(fastify: FastifyInstance) {
 
     // Initial board state
     const iMap = buildIdentityMap(boardId)
-    const cards = (getCards.all(boardId) as any[]).map(c => {
-      const row = { ...c, _color: iMap.get(c.creator_token)?.color, _animal: iMap.get(c.creator_token)?.animal }
-      return buildCard(row, token, boardRow.blur_enabled === 1)
-    })
+    const blurEnabled = boardRow.blur_enabled === 1
+    const allCards = getCards.all(boardId) as any[]
+    const cards = allCards
+      .filter((c: any) => !c.group_id)
+      .map((c: any) => buildCard({ ...c, _color: iMap.get(c.creator_token)?.color, _animal: iMap.get(c.creator_token)?.animal }, token, blurEnabled))
+    const groups = buildGroups(boardId, iMap, token, blurEnabled)
 
     const myVotedCards = (getVotesByParticipant.all(token, boardId) as Array<{ card_id: string }>).map(r => r.card_id)
 
@@ -221,9 +286,10 @@ export default async function wsRoutes(fastify: FastifyInstance) {
 
     send(ws, {
       type: 'board_state',
-      blur_enabled: boardRow.blur_enabled === 1,
+      blur_enabled: blurEnabled,
       locked: boardRow.locked === 1,
       cards,
+      groups,
       participants: [...iMap.values()].map(p => ({ color: p.color, animal: p.animal })),
       timer: { expires_at: boardRow.timer_expires_at, paused_at: boardRow.timer_paused_at, label: boardRow.timer_label },
       is_admin: boardRow.admin_token === token,
@@ -403,6 +469,8 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const card = getCard.get(msg.card_id) as any
           if (!card || card.board_id !== boardId) return
+          // D3: reject if card is grouped — use admin:card_unstack first
+          if (card.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           const ts = Math.floor(Date.now() / 1000)
           // Get max position in target column before the move (card not yet there)
@@ -426,23 +494,76 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const ok = reorderCardTx(boardId, msg.card_id, msg.column_id, msg.new_index)
           if (!ok) return
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
-          // Broadcast updated card order to all clients
-          const reorderIMap = buildIdentityMap(boardId)
-          const allCardsOrdered = getCards.all(boardId) as any[]
-          const reorderSockets = boardSockets.get(boardId)
-          if (reorderSockets) {
-            const tokenBySocket = new Map<WebSocket, string>()
-            for (const [tok, sockWs] of participantSockets) {
-              if (reorderSockets.has(sockWs)) tokenBySocket.set(sockWs, tok)
-            }
-            for (const [sockWs, viewerToken] of tokenBySocket) {
-              const perViewerCards = allCardsOrdered.map(c => {
-                const row = { ...c, _color: reorderIMap.get(c.creator_token)?.color, _animal: reorderIMap.get(c.creator_token)?.animal }
-                return buildCard(row, viewerToken, board.blur_enabled === 1)
-              })
-              send(sockWs, { type: 'cards_reordered', cards: perViewerCards })
-            }
-          }
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_group_create': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card1 = getCard.get(msg.card_id) as any
+          const card2 = getCard.get(msg.target_card_id) as any
+          if (!card1 || card1.board_id !== boardId) return
+          if (!card2 || card2.board_id !== boardId) return
+          if (card1.group_id || card2.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (card1.column_id !== card2.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (msg.card_id === msg.target_card_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          const groupId = nanoid(21)
+          createCardGroupTx(groupId, boardId, card1.column_id, msg.card_id, msg.target_card_id, Math.floor(Date.now() / 1000))
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_group_add': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          const group = getCardGroup.get(msg.group_id) as any
+          if (!card || card.board_id !== boardId) return
+          if (!group || group.board_id !== boardId) return
+          if (card.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (card.column_id !== group.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          const ok = addCardToGroupTx(msg.card_id, msg.group_id)
+          if (!ok) return
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_unstack': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          if (!card || card.board_id !== boardId) return
+          if (card.group_id !== msg.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          const result = unstackCardTx(msg.card_id, msg.group_id, boardId)
+          if (!result.ok) return
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_group_move': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const group = getCardGroup.get(msg.group_id) as any
+          if (!group || group.board_id !== boardId) return
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (group.column_id === msg.column_id) return
+          const ok = moveCardGroupTx(msg.group_id, msg.column_id, boardId, Math.floor(Date.now() / 1000))
+          if (!ok) return
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_group_reorder': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const group = getCardGroup.get(msg.group_id) as any
+          if (!group || group.board_id !== boardId) return
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (group.column_id !== msg.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          // Reorder groups and ungrouped cards together using UNION positions
+          reorderGroupInColumnTx(boardId, msg.group_id, msg.column_id, msg.new_index)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
           break
         }
       }

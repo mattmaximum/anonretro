@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { CardData } from '@shared/messages'
+import type { CardData, GroupData } from '@shared/messages'
 import Card from './Card.js'
+import GroupCard from './GroupCard.js'
 
 interface Props {
   name: string
   columnId: string
   cards: CardData[]
+  groups: GroupData[]
   revealedIds: Set<string>
   revealSequence: string[]
   myVotes: Set<string>
@@ -20,13 +22,27 @@ interface Props {
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
+  onOpenGroupModal: (groupId: string) => void
 }
 
-export default function Column({ name, columnId, cards, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete }: Props) {
+export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onOpenGroupModal }: Props) {
   const [draft, setDraft] = useState('')
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
   const isDragActive = !!activeCardId
+
+  // Build interleaved sorted list of cards and groups by position for rendering
+  type Item = { kind: 'card'; data: CardData; sortId: string } | { kind: 'group'; data: GroupData; sortId: string }
+  const items: Item[] = [
+    ...cards.map(c => ({ kind: 'card' as const, data: c, sortId: c.id })),
+    ...groups.map(g => ({ kind: 'group' as const, data: g, sortId: `group:${g.id}` })),
+  ].sort((a, b) => {
+    const posA = a.kind === 'card' ? (a.data as CardData).position : (a.data as GroupData).position
+    const posB = b.kind === 'card' ? (b.data as CardData).position : (b.data as GroupData).position
+    return posA - posB
+  })
+
+  const sortableIds = items.map(i => i.sortId)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,32 +79,49 @@ export default function Column({ name, columnId, cards, revealedIds, revealSeque
         </button>
       </form>
 
-      {/* Cards */}
-      <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
+      {/* Cards + Groups */}
+      <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
         <div className={`flex flex-col min-h-[72px] transition-all duration-150 ${isDragActive ? 'gap-6' : 'gap-2'}`}>
-          {cards.length === 0 && (
+          {items.length === 0 && (
             <div className="border-dashed border border-border/40 bg-surface rounded flex items-center justify-center h-[72px]">
               <span className="text-text-3 text-xs">No cards yet</span>
             </div>
           )}
-          {cards.map((card) => (
-            <Card
-              key={card.id}
-              card={card}
-              revealedIds={revealedIds}
-              revealIndex={revealSequence.indexOf(card.id)}
-              myVotes={myVotes}
-              locked={locked}
-              isAdmin={isAdmin}
-              isDraggingActive={activeCardId === card.id}
-              isExpanded={expandedCardId === card.id}
-              onExpand={() => onExpandCard(card.id)}
-              onCollapse={() => onExpandCard(null)}
-              onVote={onVote}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
+          {items.map((item) => {
+            if (item.kind === 'group') {
+              return (
+                <GroupCard
+                  key={item.sortId}
+                  group={item.data as GroupData}
+                  isAdmin={isAdmin}
+                  locked={locked}
+                  myVotes={myVotes}
+                  isDraggingActive={activeCardId === item.sortId}
+                  onVote={onVote}
+                  onOpenModal={onOpenGroupModal}
+                />
+              )
+            }
+            const card = item.data as CardData
+            return (
+              <Card
+                key={card.id}
+                card={card}
+                revealedIds={revealedIds}
+                revealIndex={revealSequence.indexOf(card.id)}
+                myVotes={myVotes}
+                locked={locked}
+                isAdmin={isAdmin}
+                isDraggingActive={activeCardId === card.id}
+                isExpanded={expandedCardId === card.id}
+                onExpand={() => onExpandCard(card.id)}
+                onCollapse={() => onExpandCard(null)}
+                onVote={onVote}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            )
+          })}
         </div>
       </SortableContext>
     </div>

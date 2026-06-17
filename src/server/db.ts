@@ -83,6 +83,19 @@ try { db.exec("ALTER TABLE users ADD COLUMN is_lifetime INTEGER NOT NULL DEFAULT
 try { db.exec("ALTER TABLE users ADD COLUMN lemonsqueezy_variant_id TEXT") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE cards ADD COLUMN position REAL") } catch { /* already exists */ }
 try { db.exec("UPDATE cards SET position = rowid WHERE position IS NULL") } catch { /* already run */ }
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS card_groups (
+      id         TEXT PRIMARY KEY,
+      board_id   TEXT NOT NULL,
+      column_id  TEXT NOT NULL,
+      position   REAL NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `)
+} catch { /* already exists */ }
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_card_groups_board ON card_groups(board_id)") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE cards ADD COLUMN group_id TEXT REFERENCES card_groups(id)") } catch { /* already exists */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -252,6 +265,48 @@ export const getMaxPositionInColumn = db.prepare<[string, string]>(
   'SELECT COALESCE(MAX(position), 0) as max_pos FROM cards WHERE board_id = ? AND column_id = ?'
 )
 
+// ── card_groups statements ────────────────────────────────────────────────────
+
+export const insertCardGroup = db.prepare(
+  'INSERT INTO card_groups (id, board_id, column_id, position, created_at) VALUES (?, ?, ?, ?, ?)'
+)
+
+export const getCardGroup = db.prepare<[string]>(
+  'SELECT * FROM card_groups WHERE id = ?'
+)
+
+export const getCardGroupsByBoard = db.prepare<[string]>(
+  'SELECT * FROM card_groups WHERE board_id = ? ORDER BY position ASC'
+)
+
+export const deleteCardGroup = db.prepare<[string]>(
+  'DELETE FROM card_groups WHERE id = ?'
+)
+
+export const updateCardGroupPosition = db.prepare<[number, string]>(
+  'UPDATE card_groups SET position = ? WHERE id = ?'
+)
+
+export const moveCardGroup = db.prepare<[string, number, string]>(
+  'UPDATE card_groups SET column_id = ?, position = ? WHERE id = ?'
+)
+
+export const getCardsByGroup = db.prepare<[string]>(
+  'SELECT * FROM cards WHERE group_id = ? ORDER BY position ASC, created_at ASC'
+)
+
+export const setCardGroup = db.prepare<[string | null, string]>(
+  'UPDATE cards SET group_id = ? WHERE id = ?'
+)
+
+export const getMaxGroupPositionInColumn = db.prepare<[string, string]>(
+  'SELECT COALESCE(MAX(position), 0) as max_pos FROM card_groups WHERE board_id = ? AND column_id = ?'
+)
+
+export const getUngroupedCardsByColumn = db.prepare<[string, string]>(
+  'SELECT * FROM cards WHERE board_id = ? AND column_id = ? AND group_id IS NULL ORDER BY position ASC, created_at ASC'
+)
+
 export const updateCard = db.prepare<[string, number, string]>(
   'UPDATE cards SET content = ?, updated_at = ? WHERE id = ?'
 )
@@ -327,6 +382,7 @@ export const deleteExpiredBoards = db.transaction((freeCutoff: number, proCutoff
   `
   db.prepare(`DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id IN (${expiredIds}))`).run(proCutoff, freeCutoff)
   db.prepare(`DELETE FROM cards WHERE board_id IN (${expiredIds})`).run(proCutoff, freeCutoff)
+  db.prepare(`DELETE FROM card_groups WHERE board_id IN (${expiredIds})`).run(proCutoff, freeCutoff)
   db.prepare(`DELETE FROM participants WHERE board_id IN (${expiredIds})`).run(proCutoff, freeCutoff)
   db.prepare(`DELETE FROM boards WHERE id IN (${expiredIds})`).run(proCutoff, freeCutoff)
 })
@@ -339,9 +395,10 @@ export const getActiveTimers = db.prepare(`
 // ── Transactions ─────────────────────────────────────────────────────────────
 
 export const deleteBoardFull = db.transaction((boardId: string) => {
-  // Delete in FK-safe order: votes → cards → participants → board
+  // Delete in FK-safe order: votes → cards → card_groups → participants → board
   db.prepare('DELETE FROM votes WHERE card_id IN (SELECT id FROM cards WHERE board_id = ?)').run(boardId)
   db.prepare('DELETE FROM cards WHERE board_id = ?').run(boardId)
+  db.prepare('DELETE FROM card_groups WHERE board_id = ?').run(boardId)
   db.prepare('DELETE FROM participants WHERE board_id = ?').run(boardId)
   deleteBoard.run(boardId)
 })
@@ -374,6 +431,100 @@ export const reorderCardTx = db.transaction((boardId: string, cardId: string, co
     updateCardPosition.run(i + 1, reordered[i].id)
   }
   return true
+})
+
+export const createCardGroupTx = db.transaction((groupId: string, boardId: string, columnId: string, cardId1: string, cardId2: string, now: number) => {
+  // Get position of cardId2 (the card being dropped onto) — group takes its spot
+  const card2 = db.prepare<[string]>('SELECT position FROM cards WHERE id = ?').get(cardId2) as { position: number } | undefined
+  const position = card2?.position ?? 1
+  insertCardGroup.run(groupId, boardId, columnId, position, now)
+  // Both cards join the group; set their positions relative within the group
+  setCardGroup.run(groupId, cardId1)
+  updateCardPosition.run(2, cardId1)
+  setCardGroup.run(groupId, cardId2)
+  updateCardPosition.run(1, cardId2)
+  return true
+})
+
+export const addCardToGroupTx = db.transaction((cardId: string, groupId: string) => {
+  const group = getCardGroup.get(groupId) as any
+  if (!group) return false
+  const children = getCardsByGroup.all(groupId) as any[]
+  setCardGroup.run(groupId, cardId)
+  updateCardPosition.run(children.length + 1, cardId)
+  return true
+})
+
+export const unstackCardTx = db.transaction((cardId: string, groupId: string, boardId: string) => {
+  const group = getCardGroup.get(groupId) as any
+  if (!group) return { ok: false, dissolved: false }
+
+  // Remove card from group
+  setCardGroup.run(null, cardId)
+
+  // Check remaining children
+  const remaining = getCardsByGroup.all(groupId) as { id: string }[]
+
+  if (remaining.length <= 1) {
+    // Dissolve group: move last child back to column, delete group
+    if (remaining.length === 1) {
+      const lastCard = remaining[0]
+      setCardGroup.run(null, lastCard.id)
+      updateCardPosition.run(group.position, lastCard.id)
+    }
+    deleteCardGroup.run(groupId)
+    // Place unstacked card right after group position
+    updateCardPosition.run(group.position + 0.5, cardId)
+    // Renormalize all ungrouped cards in the column
+    renormalizeColumnTx(boardId, group.column_id)
+    return { ok: true, dissolved: true }
+  }
+
+  // Group survives — renormalize remaining children positions
+  for (let i = 0; i < remaining.length; i++) {
+    updateCardPosition.run(i + 1, remaining[i].id)
+  }
+  // Place unstacked card right after the group in the column
+  updateCardPosition.run(group.position + 0.5, cardId)
+  renormalizeColumnTx(boardId, group.column_id)
+  return { ok: true, dissolved: false }
+})
+
+export const moveCardGroupTx = db.transaction((groupId: string, targetColumnId: string, boardId: string, now: number) => {
+  const group = getCardGroup.get(groupId) as any
+  if (!group) return false
+  // Get max position in target column (ungrouped cards + groups)
+  const { max_pos: maxCardPos } = getMaxPositionInColumn.get(boardId, targetColumnId) as { max_pos: number }
+  const { max_pos: maxGroupPos } = getMaxGroupPositionInColumn.get(boardId, targetColumnId) as { max_pos: number }
+  const newPos = Math.max(maxCardPos, maxGroupPos) + 1
+  moveCardGroup.run(targetColumnId, newPos, groupId)
+  // Move all child cards to the target column
+  const children = getCardsByGroup.all(groupId) as { id: string }[]
+  for (const child of children) {
+    db.prepare<[string, number, string]>('UPDATE cards SET column_id = ?, updated_at = ? WHERE id = ?').run(targetColumnId, now, child.id)
+  }
+  return true
+})
+
+// Renormalizes ungrouped card positions + group positions in a column to clean 1,2,3...
+// Used internally after unstack and reorder operations.
+const renormalizeColumnTx = db.transaction((boardId: string, columnId: string) => {
+  type PosRow = { id: string; position: number; kind: 'card' | 'group' }
+  const ungroupedCards = db.prepare<[string, string]>(
+    "SELECT id, position, 'card' as kind FROM cards WHERE board_id = ? AND column_id = ? AND group_id IS NULL ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+  const groups = db.prepare<[string, string]>(
+    "SELECT id, position, 'group' as kind FROM card_groups WHERE board_id = ? AND column_id = ? ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+
+  const all = [...ungroupedCards, ...groups].sort((a, b) => a.position - b.position)
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].kind === 'card') {
+      updateCardPosition.run(i + 1, all[i].id)
+    } else {
+      updateCardGroupPosition.run(i + 1, all[i].id)
+    }
+  }
 })
 
 export const joinBoardTx = db.transaction((
