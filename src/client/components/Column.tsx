@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { CardData } from '@shared/messages'
 import Card from './Card.js'
 
@@ -24,6 +25,8 @@ interface Props {
 export default function Column({ name, columnId, cards, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete }: Props) {
   const [draft, setDraft] = useState('')
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
+
+  const isDragActive = !!activeCardId
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -61,31 +64,33 @@ export default function Column({ name, columnId, cards, revealedIds, revealSeque
       </form>
 
       {/* Cards */}
-      <div className={`flex flex-col gap-2 min-h-[72px]`}>
-        {cards.length === 0 && (
-          <div className="border-dashed border border-border/40 bg-surface rounded flex items-center justify-center h-[72px]">
-            <span className="text-text-3 text-xs">No cards yet</span>
-          </div>
-        )}
-        {cards.map((card) => (
-          <Card
-            key={card.id}
-            card={card}
-            revealedIds={revealedIds}
-            revealIndex={revealSequence.indexOf(card.id)}
-            myVotes={myVotes}
-            locked={locked}
-            isAdmin={isAdmin}
-            isDraggingActive={activeCardId === card.id}
-            isExpanded={expandedCardId === card.id}
-            onExpand={() => onExpandCard(card.id)}
-            onCollapse={() => onExpandCard(null)}
-            onVote={onVote}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
+      <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
+        <div className={`flex flex-col min-h-[72px] transition-all duration-150 ${isDragActive ? 'gap-6' : 'gap-2'}`}>
+          {cards.length === 0 && (
+            <div className="border-dashed border border-border/40 bg-surface rounded flex items-center justify-center h-[72px]">
+              <span className="text-text-3 text-xs">No cards yet</span>
+            </div>
+          )}
+          {cards.map((card) => (
+            <Card
+              key={card.id}
+              card={card}
+              revealedIds={revealedIds}
+              revealIndex={revealSequence.indexOf(card.id)}
+              myVotes={myVotes}
+              locked={locked}
+              isAdmin={isAdmin}
+              isDraggingActive={activeCardId === card.id}
+              isExpanded={expandedCardId === card.id}
+              onExpand={() => onExpandCard(card.id)}
+              onCollapse={() => onExpandCard(null)}
+              onVote={onVote}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      </SortableContext>
     </div>
   )
 }

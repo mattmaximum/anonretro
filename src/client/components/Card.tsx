@@ -1,5 +1,5 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
-import { useDraggable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { CardData } from '@shared/messages'
 
@@ -26,7 +26,7 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
   const contentRef = useRef<HTMLParagraphElement>(null)
   const [isClamped, setIsClamped] = useState(false)
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     disabled: !isAdmin || locked,
   })
@@ -46,7 +46,7 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
   const isRevealing = revealedIds.has(card.id)
   const voted = myVotes.has(card.id)
 
-  const dragStyle = transform ? { transform: CSS.Translate.toString(transform) } : {}
+  const dragStyle = { transform: CSS.Transform.toString(transform), transition }
   const revealStyle = isRevealing
     ? { transition: `opacity 0.4s ease ${revealIndex * 50}ms` }
     : {}
@@ -56,7 +56,6 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
       ref={setNodeRef}
       className={`bg-surface border border-border rounded p-3 flex gap-2 group ${isDragging || isDraggingActive ? 'opacity-40' : ''}`}
       style={{ ...dragStyle, ...revealStyle }}
-      role="article"
       {...attributes}
     >
       {/* Drag handle — facilitator only */}

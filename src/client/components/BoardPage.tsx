@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
 import { storage } from '../lib/storage.js'
@@ -173,6 +174,10 @@ export default function BoardPage() {
         setBoardTitle(msg.title)
         break
 
+      case 'cards_reordered':
+        setCards(msg.cards)
+        break
+
       case 'board_deleted':
         setBoardDeletedByAdmin(true)
         break
@@ -225,13 +230,32 @@ export default function BoardPage() {
     setActiveCardId(null)
     const { active, over } = event
     if (!over || !adminToken) return
+
     const cardId = active.id as string
-    const targetColumnId = over.id as string
+    const overId = over.id as string
     const card = cards.find(c => c.id === cardId)
-    if (!card || card.column_id === targetColumnId) return
-    // Optimistic update
-    setCards(prev => prev.map(c => c.id === cardId ? { ...c, column_id: targetColumnId } : c))
-    send({ type: 'admin:card_move', admin_token: adminToken, card_id: cardId, column_id: targetColumnId })
+    if (!card) return
+
+    const columnIds = new Set(fmt.columns.map(c => c.id))
+
+    if (columnIds.has(overId)) {
+      // Dropped on column area → cross-column move
+      if (card.column_id === overId) return
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, column_id: overId } : c))
+      send({ type: 'admin:card_move', admin_token: adminToken, card_id: cardId, column_id: overId })
+    } else {
+      // Dropped on a card → reorder within same column
+      const overCard = cards.find(c => c.id === overId)
+      if (!overCard || card.column_id !== overCard.column_id) return
+      const columnCards = cards.filter(c => c.column_id === card.column_id)
+      const oldIndex = columnCards.findIndex(c => c.id === cardId)
+      const newIndex = columnCards.findIndex(c => c.id === overId)
+      if (oldIndex === newIndex) return
+      // Optimistic reorder
+      const reordered = arrayMove(columnCards, oldIndex, newIndex)
+      setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
+      send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: cardId, column_id: card.column_id, new_index: newIndex })
+    }
   }
 
   // Keep browser tab title in sync
@@ -470,6 +494,7 @@ export default function BoardPage() {
 
             <Column
               name={fmt.columns[activeTab].label}
+              columnId={fmt.columns[activeTab].id}
               cards={cards.filter(c => c.column_id === fmt.columns[activeTab].id)}
               revealedIds={revealedIds}
               revealSequence={revealSequence}

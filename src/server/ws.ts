@@ -6,6 +6,7 @@ import {
   updateBoardBlur, updateBoardLock, updateBoardActivity, updateBoardWrite, updateBoardTitle, updateTimerStart,
   updateTimerPause, updateTimerResume, updateTimerClear,
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
+  getMaxPositionInColumn, updateCardPosition, reorderCardTx,
 } from './db.js'
 import { nanoid } from 'nanoid'
 import { InboundSchema } from '../shared/messages.js'
@@ -114,6 +115,10 @@ function buildIdentityMap(boardId: string): Map<string, { color: string; animal:
 
 function verifyAdmin(board: { admin_token: string }, token: string): boolean {
   return board.admin_token === token
+}
+
+function validateColumn(boardFormat: string, columnId: string): boolean {
+  return getFormat(boardFormat).columns.some(c => c.id === columnId)
 }
 
 function broadcastPresence(boardId: string) {
@@ -254,12 +259,13 @@ export default async function wsRoutes(fastify: FastifyInstance) {
         case 'card:add': {
           if (board.locked === 1) { send(ws, { type: 'error', code: 'BOARD_LOCKED' }); return }
           if (!checkRateLimit(token)) { send(ws, { type: 'error', code: 'RATE_LIMITED' }); return }
-          const fmt = getFormat(board.format)
-          if (!fmt.columns.some(c => c.id === msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           const id = nanoid(21)
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           insertCard.run(id, boardId, token, msg.column_id, content, ts, ts)
+          const { max_pos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
+          updateCardPosition.run(max_pos + 1, id)
           recordDailyCardCreated.run(utcDate())
           updateBoardWrite.run(ts, boardId)
           broadcastCardUpdate(boardId, { id, board_id: boardId, creator_token: token, column_id: msg.column_id, content, votes: 0, created_at: ts, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
@@ -397,14 +403,46 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const card = getCard.get(msg.card_id) as any
           if (!card || card.board_id !== boardId) return
-          const fmt = getFormat(board.format)
-          if (!fmt.columns.some(c => c.id === msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           const ts = Math.floor(Date.now() / 1000)
+          // Get max position in target column before the move (card not yet there)
+          const { max_pos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
           moveCard.run(msg.column_id, ts, msg.card_id, boardId)
+          updateCardPosition.run(max_pos + 1, card.id)
           updateBoardActivity.run(ts, boardId)
           const ownerMap = buildIdentityMap(boardId)
           const ownerOf = ownerMap.get(card.creator_token)
           broadcastCardUpdate(boardId, { ...card, column_id: msg.column_id, updated_at: ts, _color: ownerOf?.color, _animal: ownerOf?.animal }, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_reorder': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          if (!card || card.board_id !== boardId) return
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          // Guard: card must already be in the target column (prevent cross-column move via reorder)
+          if (card.column_id !== msg.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          const ok = reorderCardTx(boardId, msg.card_id, msg.column_id, msg.new_index)
+          if (!ok) return
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          // Broadcast updated card order to all clients
+          const reorderIMap = buildIdentityMap(boardId)
+          const allCardsOrdered = getCards.all(boardId) as any[]
+          const reorderSockets = boardSockets.get(boardId)
+          if (reorderSockets) {
+            const tokenBySocket = new Map<WebSocket, string>()
+            for (const [tok, sockWs] of participantSockets) {
+              if (reorderSockets.has(sockWs)) tokenBySocket.set(sockWs, tok)
+            }
+            for (const [sockWs, viewerToken] of tokenBySocket) {
+              const perViewerCards = allCardsOrdered.map(c => {
+                const row = { ...c, _color: reorderIMap.get(c.creator_token)?.color, _animal: reorderIMap.get(c.creator_token)?.animal }
+                return buildCard(row, viewerToken, board.blur_enabled === 1)
+              })
+              send(sockWs, { type: 'cards_reordered', cards: perViewerCards })
+            }
+          }
           break
         }
       }

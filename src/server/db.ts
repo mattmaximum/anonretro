@@ -81,6 +81,8 @@ try { db.exec("ALTER TABLE boards ADD COLUMN owner_id TEXT") } catch { /* alread
 try { db.exec("ALTER TABLE boards ADD COLUMN archived INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE users ADD COLUMN is_lifetime INTEGER NOT NULL DEFAULT 0") } catch { /* already exists */ }
 try { db.exec("ALTER TABLE users ADD COLUMN lemonsqueezy_variant_id TEXT") } catch { /* already exists */ }
+try { db.exec("ALTER TABLE cards ADD COLUMN position REAL") } catch { /* already exists */ }
+try { db.exec("UPDATE cards SET position = rowid WHERE position IS NULL") } catch { /* already run */ }
 
 // ── Prepared statements ──────────────────────────────────────────────────────
 
@@ -227,7 +229,7 @@ export const insertParticipant = db.prepare(
 )
 
 export const getCards = db.prepare<[string]>(
-  'SELECT * FROM cards WHERE board_id = ? ORDER BY created_at ASC'
+  'SELECT * FROM cards WHERE board_id = ? ORDER BY position ASC, created_at ASC'
 )
 
 export const getCard = db.prepare<[string]>(
@@ -236,6 +238,18 @@ export const getCard = db.prepare<[string]>(
 
 export const insertCard = db.prepare(
   'INSERT INTO cards (id, board_id, creator_token, column_id, content, votes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)'
+)
+
+export const updateCardPosition = db.prepare<[number, string]>(
+  'UPDATE cards SET position = ? WHERE id = ?'
+)
+
+export const getCardsByColumn = db.prepare<[string, string]>(
+  'SELECT id FROM cards WHERE board_id = ? AND column_id = ? ORDER BY position ASC, created_at ASC'
+)
+
+export const getMaxPositionInColumn = db.prepare<[string, string]>(
+  'SELECT COALESCE(MAX(position), 0) as max_pos FROM cards WHERE board_id = ? AND column_id = ?'
 )
 
 export const updateCard = db.prepare<[string, number, string]>(
@@ -342,6 +356,24 @@ export const voteToggleTx = db.transaction((cardId: string, token: string) => {
   const { count } = getVoteCount.get(cardId) as { count: number }
   updateCardVotes.run(count, cardId)
   return { count, voted: !existing }
+})
+
+export const reorderCardTx = db.transaction((boardId: string, cardId: string, columnId: string, newIndex: number) => {
+  const rows = getCardsByColumn.all(boardId, columnId) as { id: string }[]
+  const fromIndex = rows.findIndex(r => r.id === cardId)
+  if (fromIndex === -1) return false
+
+  // Remove from current position and insert at newIndex
+  const reordered = [...rows]
+  reordered.splice(fromIndex, 1)
+  const clampedIndex = Math.min(newIndex, reordered.length)
+  reordered.splice(clampedIndex, 0, rows[fromIndex])
+
+  // Renormalize to clean 1.0, 2.0, 3.0... positions
+  for (let i = 0; i < reordered.length; i++) {
+    updateCardPosition.run(i + 1, reordered[i].id)
+  }
+  return true
 })
 
 export const joinBoardTx = db.transaction((
