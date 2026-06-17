@@ -9,6 +9,30 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.6.0] — 2026-06-17
+
+### Added
+
+- **Card reordering (facilitator only)** — grip handle appears on card hover; cards can be dragged up and down within a column to set the discussion order. Position persists for all connected participants via WebSocket broadcast. Reorder is desktop-only; board lock disables it.
+- **Card stacking / grouping (facilitator only)** — drag one card onto the center of another to stack them into a group. Groups render as a stacked-card visual with a "+N more" badge and the first card's content as a preview. Aggregate vote count is displayed on the stack; individual votes are cast inside the group modal.
+- **Group modal** — click any group to expand it into a modal listing all child cards with per-card vote buttons and attribution. Facilitators can unlink individual cards from the group (chain-link icon on hover), which dissolves the group if only one card remains.
+- **Group drag-and-drop** — groups can be dragged between columns (moves all child cards with them) and reordered within a column, with optimistic position updates so the UI responds immediately without waiting for the server echo.
+
+### Changed
+
+- **3-way drop detection on card drag** — dropping a card in the top or bottom 20% of another card reorders; dropping in the center 60% stacks. The detection uses live pointer position against the hovered card's bounding rect.
+- **`board_state` and `cards_reordered` messages** — both now include a `groups` array alongside `cards`; grouped cards are excluded from the top-level `cards` array to avoid double-rendering.
+- **New `card_groups` table** — SQLite schema extended with `card_groups (id, board_id, column_id, position, created_at)` and a `group_id` FK on `cards`. Group and card positions share the same column-position space and are interleaved by position for rendering.
+- **Board and card cleanup** — `deleteBoardFull` and `deleteExpiredBoards` now clean up `card_groups` rows in FK-safe order (cards before groups).
+
+### Fixed
+
+- **New cards placed before groups** — `card:add` and `admin:card_move` previously used `MAX(position) FROM cards` which included within-group positions (1, 2, 3…), causing new cards to appear before existing groups in columns that had no ungrouped cards. Both handlers now use `Math.max(maxCardPos, maxGroupPos) + 1`.
+- **Nested `<button>` in group card** — the drag handle button was nested inside the modal-trigger button, which is invalid HTML and caused drag-handle clicks to open the modal on Chromium. The outer element is now a `<div role="button">`.
+- **SQLite statement handle leak** — `createCardGroupTx` and `moveCardGroupTx` called `db.prepare()` inside the transaction function on every invocation. Fixed by reusing existing module-level prepared statements.
+
+---
+
 ## [0.5.0] — 2026-06-15
 
 ### Added
