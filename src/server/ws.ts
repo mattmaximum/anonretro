@@ -330,8 +330,9 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           const ts = Math.floor(Date.now() / 1000)
           const content = msg.content.trim().slice(0, CARD_MAX_LENGTH)
           insertCard.run(id, boardId, token, msg.column_id, content, ts, ts)
-          const { max_pos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
-          updateCardPosition.run(max_pos + 1, id)
+          const { max_pos: maxCardPos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
+          const { max_pos: maxGroupPos } = getMaxGroupPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
+          updateCardPosition.run(Math.max(maxCardPos, maxGroupPos) + 1, id)
           recordDailyCardCreated.run(utcDate())
           updateBoardWrite.run(ts, boardId)
           broadcastCardUpdate(boardId, { id, board_id: boardId, creator_token: token, column_id: msg.column_id, content, votes: 0, created_at: ts, updated_at: ts, _color: myId?.color, _animal: myId?.animal }, board.blur_enabled === 1)
@@ -474,9 +475,10 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           const ts = Math.floor(Date.now() / 1000)
           // Get max position in target column before the move (card not yet there)
-          const { max_pos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
+          const { max_pos: maxCardPos } = getMaxPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
+          const { max_pos: maxGroupPos } = getMaxGroupPositionInColumn.get(boardId, msg.column_id) as { max_pos: number }
           moveCard.run(msg.column_id, ts, msg.card_id, boardId)
-          updateCardPosition.run(max_pos + 1, card.id)
+          updateCardPosition.run(Math.max(maxCardPos, maxGroupPos) + 1, card.id)
           updateBoardActivity.run(ts, boardId)
           const ownerMap = buildIdentityMap(boardId)
           const ownerOf = ownerMap.get(card.creator_token)

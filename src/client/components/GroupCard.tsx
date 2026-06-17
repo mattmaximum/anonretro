@@ -38,10 +38,13 @@ export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingA
         <div className="absolute inset-x-3 -bottom-3 h-full bg-surface border border-border rounded opacity-40 pointer-events-none" />
       )}
 
-      {/* Main card */}
-      <button
+      {/* Main card — div not button to allow nested drag-handle button */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onOpenModal(group.id)}
-        className="relative w-full bg-surface border border-accent/40 rounded p-3 flex gap-2 group text-left hover:border-accent/70 transition-colors"
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpenModal(group.id) }}
+        className="relative w-full bg-surface border border-accent/40 rounded p-3 flex gap-2 group text-left hover:border-accent/70 transition-colors cursor-pointer"
       >
         {/* Drag handle — facilitator only */}
         {isAdmin && !locked && (
@@ -91,7 +94,7 @@ export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingA
             </div>
           </div>
         </div>
-      </button>
+      </div>
     </div>
   )
 }

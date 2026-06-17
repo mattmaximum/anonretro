@@ -5,7 +5,6 @@ interface Props {
   isAdmin?: boolean
   locked: boolean
   myVotes: Set<string>
-  blurEnabled: boolean
   onClose: () => void
   onVote: (cardId: string) => void
   onUnstack: (cardId: string, groupId: string) => void

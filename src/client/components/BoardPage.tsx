@@ -285,6 +285,20 @@ export default function BoardPage() {
       const oldIdx = colItems.findIndex(i => i === activeId)
       const newIdx = colItems.findIndex(i => i === overId)
       if (oldIdx === newIdx || newIdx === -1) return
+      // Optimistic: reorder merged items and reassign sequential positions
+      const reordered = [...colItems]
+      reordered.splice(oldIdx, 1)
+      reordered.splice(newIdx, 0, activeId)
+      setGroups(prev => prev.map(g => {
+        const idx = reordered.indexOf(`group:${g.id}`)
+        if (g.column_id !== group.column_id || idx === -1) return g
+        return { ...g, position: idx + 1 }
+      }))
+      setCards(prev => prev.map(c => {
+        const idx = reordered.indexOf(c.id)
+        if (c.column_id !== group.column_id || idx === -1) return c
+        return { ...c, position: idx + 1 }
+      }))
       send({ type: 'admin:card_group_reorder', admin_token: adminToken, group_id: groupId, column_id: group.column_id, new_index: newIdx })
       return
     }
@@ -516,7 +530,6 @@ export default function BoardPage() {
             isAdmin={isAdmin}
             locked={boardLocked}
             myVotes={myVotes}
-            blurEnabled={blurEnabled}
             onClose={() => setOpenGroupId(null)}
             onVote={cardId => {
               setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })

@@ -307,6 +307,10 @@ export const getUngroupedCardsByColumn = db.prepare<[string, string]>(
   'SELECT * FROM cards WHERE board_id = ? AND column_id = ? AND group_id IS NULL ORDER BY position ASC, created_at ASC'
 )
 
+export const updateCardColumn = db.prepare<[string, number, string]>(
+  'UPDATE cards SET column_id = ?, updated_at = ? WHERE id = ?'
+)
+
 export const updateCard = db.prepare<[string, number, string]>(
   'UPDATE cards SET content = ?, updated_at = ? WHERE id = ?'
 )
@@ -435,7 +439,7 @@ export const reorderCardTx = db.transaction((boardId: string, cardId: string, co
 
 export const createCardGroupTx = db.transaction((groupId: string, boardId: string, columnId: string, cardId1: string, cardId2: string, now: number) => {
   // Get position of cardId2 (the card being dropped onto) — group takes its spot
-  const card2 = db.prepare<[string]>('SELECT position FROM cards WHERE id = ?').get(cardId2) as { position: number } | undefined
+  const card2 = getCard.get(cardId2) as { position: number } | undefined
   const position = card2?.position ?? 1
   insertCardGroup.run(groupId, boardId, columnId, position, now)
   // Both cards join the group; set their positions relative within the group
@@ -501,7 +505,7 @@ export const moveCardGroupTx = db.transaction((groupId: string, targetColumnId: 
   // Move all child cards to the target column
   const children = getCardsByGroup.all(groupId) as { id: string }[]
   for (const child of children) {
-    db.prepare<[string, number, string]>('UPDATE cards SET column_id = ?, updated_at = ? WHERE id = ?').run(targetColumnId, now, child.id)
+    updateCardColumn.run(targetColumnId, now, child.id)
   }
   return true
 })
