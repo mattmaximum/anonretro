@@ -96,6 +96,9 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 - Reveal all cards at once with staggered fade-in animation + chime
 - Re-hide cards after reveal
 - Lock board (prevents new cards and edits)
+- **Reorder cards** — grip handle appears on card hover; drag cards up and down within a column to set the discussion order. Position persists for all connected participants.
+- **Stack cards into groups** — drag one card onto the center of another to group them. Groups render as a stacked-card visual with a "+N more" badge and the first card's content as a preview. Groups can be dragged between columns or reordered within a column.
+- **Group modal** — click any group to expand it: see all child cards with per-card vote buttons and author attribution. Unlink individual cards from the group via the chain-link icon (hover to reveal); unlinking the second-to-last card dissolves the group.
 - Timer: set duration (1–60 min) with optional label, pause, resume, cancel
 - Timer is server-led — clients count down from `expires_at`, no server ticks broadcast
 - Timer survives server restarts (`restoreTimers()` re-arms from SQLite on startup)
@@ -105,7 +108,8 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 
 ### Voting
 
-- Upvote any revealed card
+- Upvote any revealed card, or vote on individual cards inside a group via the group modal
+- Aggregate vote count displayed on the group stack; per-card counts visible inside the modal
 - Vote counts computed server-side in a transaction — never incremented in application code
 - Optimistic UI update on click, confirmed by server broadcast
 
