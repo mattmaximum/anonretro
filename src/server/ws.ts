@@ -523,8 +523,8 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!card || card.board_id !== boardId) return
           if (!group || group.board_id !== boardId) return
           if (card.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
-          if (card.column_id !== group.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
-          const ok = addCardToGroupTx(msg.card_id, msg.group_id)
+          const now = Math.floor(Date.now() / 1000)
+          const ok = addCardToGroupTx(msg.card_id, msg.group_id, now)
           if (!ok) return
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcastCardsReordered(boardId, board.blur_enabled === 1)

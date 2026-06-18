@@ -8,11 +8,12 @@ interface Props {
   locked: boolean
   myVotes: Set<string>
   isDraggingActive?: boolean
+  isHoveredOver?: boolean
   onVote: (cardId: string) => void
   onOpenModal: (groupId: string) => void
 }
 
-export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingActive, onVote, onOpenModal }: Props) {
+export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingActive, isHoveredOver, onVote, onOpenModal }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `group:${group.id}`,
     disabled: !isAdmin || locked,
@@ -44,7 +45,11 @@ export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingA
         tabIndex={0}
         onClick={() => onOpenModal(group.id)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpenModal(group.id) }}
-        className="relative w-full bg-surface border border-accent/40 rounded p-3 flex gap-2 group text-left hover:border-accent/70 transition-colors cursor-pointer"
+        className={`relative w-full bg-surface rounded p-3 flex gap-2 group text-left transition-colors cursor-pointer ${
+          isHoveredOver
+            ? 'border-2 border-accent ring-2 ring-accent/30'
+            : 'border border-accent/40 hover:border-accent/70'
+        }`}
       >
         {/* Drag handle — facilitator only */}
         {isAdmin && !locked && (

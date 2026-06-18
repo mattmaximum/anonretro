@@ -22,10 +22,11 @@ interface Props {
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
+  dragOverGroupId?: string | null
   onOpenGroupModal: (groupId: string) => void
 }
 
-export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onOpenGroupModal }: Props) {
+export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, dragOverGroupId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onOpenGroupModal }: Props) {
   const [draft, setDraft] = useState('')
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
@@ -97,6 +98,7 @@ export default function Column({ name, columnId, cards, groups, revealedIds, rev
                   locked={locked}
                   myVotes={myVotes}
                   isDraggingActive={activeCardId === item.sortId}
+                  isHoveredOver={dragOverGroupId === (item.data as GroupData).id}
                   onVote={onVote}
                   onOpenModal={onOpenGroupModal}
                 />

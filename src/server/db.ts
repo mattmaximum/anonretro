@@ -450,12 +450,17 @@ export const createCardGroupTx = db.transaction((groupId: string, boardId: strin
   return true
 })
 
-export const addCardToGroupTx = db.transaction((cardId: string, groupId: string) => {
+export const addCardToGroupTx = db.transaction((cardId: string, groupId: string, now: number) => {
   const group = getCardGroup.get(groupId) as any
   if (!group) return false
+  const card = getCard.get(cardId) as any
+  if (!card) return false
   const children = getCardsByGroup.all(groupId) as any[]
   setCardGroup.run(groupId, cardId)
   updateCardPosition.run(children.length + 1, cardId)
+  if (card.column_id !== group.column_id) {
+    updateCardColumn.run(group.column_id, now, cardId)
+  }
   return true
 })
 

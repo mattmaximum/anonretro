@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
+import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin, rectIntersection } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent, CollisionDetection } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, DragOverEvent, CollisionDetection } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
@@ -73,14 +73,32 @@ export default function BoardPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  // Use pointer position (not dragged rect) as primary collision signal so that
-  // the card directly under the pointer is always the `over` target. Falls back
-  // to rect intersection when no droppable contains the pointer (e.g. between gaps).
+  // Stable set of column droppable IDs for collision filtering.
+  const columnIds = useMemo(() => new Set(getFormat(format).columns.map(c => c.id)), [format])
+
+  // Prefer sortable items (cards/groups) over column droppables when both are
+  // under the pointer. The column droppable covers the whole column area, so
+  // without this filter pointerWithin returns the column first and the SortableContext
+  // never sees the card — causing the animated placeholder to stay at the wrong position.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args)
+    const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
+    if (itemCollisions.length > 0) return itemCollisions
     if (pointerCollisions.length > 0) return pointerCollisions
     return rectIntersection(args)
-  }, [])
+  }, [columnIds])
+
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+
+  function handleDragOver(event: DragOverEvent) {
+    setDragOverId(event.over ? (event.over.id as string) : null)
+  }
+
+  // ID of the group currently being hovered by a dragged card (not a group).
+  // Used to show a visual drop-target highlight on GroupCard.
+  const dragOverGroupId = activeCardId && !activeCardId.startsWith('group:') && dragOverId?.startsWith('group:')
+    ? dragOverId.slice('group:'.length)
+    : null
 
   useEffect(() => {
     function track(e: PointerEvent) { pointerYRef.current = e.clientY }
@@ -262,6 +280,7 @@ export default function BoardPage() {
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveCardId(null)
+    setDragOverId(null)
     const { active, over } = event
     if (!over || !adminToken) return
 
@@ -340,11 +359,12 @@ export default function BoardPage() {
       // Card dropped on a group → add to group
       const groupId = overId.slice('group:'.length)
       const group = groups.find(g => g.id === groupId)
-      if (!group || group.column_id !== card.column_id) return
-      // Optimistic: remove from top-level cards, add to group's child_cards
+      if (!group) return
+      // Optimistic: remove from top-level cards, add to group's child_cards.
+      // column_id is set to the group's column so cross-column adds render correctly.
       setCards(prev => prev.filter(c => c.id !== activeId))
       setGroups(prev => prev.map(g => g.id === groupId
-        ? { ...g, child_cards: [...g.child_cards, { ...card, group_id: groupId }] }
+        ? { ...g, child_cards: [...g.child_cards, { ...card, group_id: groupId, column_id: group.column_id }] }
         : g
       ))
       send({ type: 'admin:card_group_add', admin_token: adminToken, card_id: activeId, group_id: groupId })
@@ -581,7 +601,7 @@ export default function BoardPage() {
         {/* Columns — desktop */}
         <main className="flex-1 p-4 overflow-auto">
           {/* Desktop: grid */}
-          <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
               {fmt.columns.map(col => (
                 <Column
@@ -596,6 +616,7 @@ export default function BoardPage() {
                   locked={boardLocked}
                   isAdmin={isAdmin}
                   activeCardId={activeCardId}
+                  dragOverGroupId={dragOverGroupId}
                   expandedCardId={expandedCardId}
                   onExpandCard={setExpandedCardId}
                   onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
