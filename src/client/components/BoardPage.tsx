@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin, rectIntersection } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, pointerWithin, rectIntersection } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent, DragOverEvent, CollisionDetection } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
@@ -76,17 +76,42 @@ export default function BoardPage() {
   // Stable set of column droppable IDs for collision filtering.
   const columnIds = useMemo(() => new Set(getFormat(format).columns.map(c => c.id)), [format])
 
-  // Prefer sortable items (cards/groups) over column droppables when both are
-  // under the pointer. The column droppable covers the whole column area, so
-  // without this filter pointerWithin returns the column first and the SortableContext
-  // never sees the card — causing the animated placeholder to stay at the wrong position.
+  // Maps each sortable item ID (card id or 'group:<id>') to its column ID.
+  // Used to restrict closestCenter fallback to the same column as the pointer.
+  const itemToColumnId = useMemo(() => {
+    const map = new Map<string, string>()
+    cards.forEach(c => map.set(c.id, c.column_id))
+    groups.forEach(g => map.set(`group:${g.id}`, g.column_id))
+    return map
+  }, [cards, groups])
+
+  // Collision detection for multi-container sortable drag:
+  // 1. Prefer sortable items directly under the pointer (pointerWithin, filtered).
+  // 2. When pointer is in a column but not over a specific item (e.g. above all
+  //    cards, or slightly off a group), use closestCenter within that column so
+  //    the animated placeholder appears at the correct position and the group
+  //    highlight fires even when the pointer isn't pixel-perfect on the group.
+  // 3. Fall back to rectIntersection when pointer is outside all droppables.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args)
     const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
     if (itemCollisions.length > 0) return itemCollisions
-    if (pointerCollisions.length > 0) return pointerCollisions
+
+    const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
+    if (columnCollision) {
+      const columnId = columnCollision.id as string
+      const columnContainers = args.droppableContainers.filter(
+        c => itemToColumnId.get(c.id as string) === columnId
+      )
+      if (columnContainers.length > 0) {
+        const closest = closestCenter({ ...args, droppableContainers: columnContainers })
+        if (closest.length > 0) return closest
+      }
+      return [columnCollision]
+    }
+
     return rectIntersection(args)
-  }, [columnIds])
+  }, [columnIds, itemToColumnId])
 
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
@@ -280,18 +305,27 @@ export default function BoardPage() {
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveCardId(null)
+    // Capture before clearing — React batches the setState so dragOverId is
+    // still the old value within this synchronous handler, but we capture it
+    // explicitly to make the intent clear.
+    const lastDragOverId = dragOverId
     setDragOverId(null)
     const { active, over } = event
     if (!over || !adminToken) return
 
     const activeId = active.id as string
-    const overId = over.id as string
+    // If the pointer slipped just outside a group's rect at release,
+    // collision detection returns the column. Use the last recorded dragOverId
+    // as a fallback so a group that was highlighted stays the target.
+    const effectiveOverId = (columnIds.has(over.id as string) && lastDragOverId?.startsWith('group:'))
+      ? lastDragOverId
+      : (over.id as string)
+    let overId = effectiveOverId
     const isActiveGroup = activeId.startsWith('group:')
     const isOverGroup = overId.startsWith('group:')
-    const columnIdSet = new Set(fmt.columns.map(c => c.id))
 
     // ── Drop on column background/header ──
-    if (columnIdSet.has(overId)) {
+    if (columnIds.has(overId)) {
       if (isActiveGroup) {
         const groupId = activeId.slice('group:'.length)
         const group = groups.find(g => g.id === groupId)
