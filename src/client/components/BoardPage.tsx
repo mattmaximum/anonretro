@@ -85,13 +85,17 @@ export default function BoardPage() {
     return map
   }, [cards, groups])
 
-  // Collision detection for multi-container sortable drag:
-  // 1. Prefer sortable items directly under the pointer (pointerWithin, filtered).
-  // 2. When pointer is in a column but not over a specific item (e.g. above all
-  //    cards, or slightly off a group), use closestCenter within that column so
-  //    the animated placeholder appears at the correct position and the group
-  //    highlight fires even when the pointer isn't pixel-perfect on the group.
-  // 3. Fall back to rectIntersection when pointer is outside all droppables.
+  // Collision detection for multi-container sortable drag.
+  //
+  // Same-column: pointerWithin only, EXCEPT when the pointer is above all items
+  // (no card rect contains it yet). In that case we return the first item so
+  // SortableContext animates the placeholder to the top of the column.
+  // Using closestCenter throughout the column causes SortableContext to shift
+  // cards, which changes the rects, which changes closestCenter's result —
+  // an oscillation that makes the 3-way stack/sort detection unreliable.
+  //
+  // Cross-column: closestCenter within the target column so a group is detectable
+  // even when the pointer isn't pixel-perfect within its rect.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args)
     const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
@@ -103,10 +107,35 @@ export default function BoardPage() {
       const columnContainers = args.droppableContainers.filter(
         c => itemToColumnId.get(c.id as string) === columnId
       )
+
       if (columnContainers.length > 0) {
-        const closest = closestCenter({ ...args, droppableContainers: columnContainers })
-        if (closest.length > 0) return closest
+        const activeColumnId = itemToColumnId.get(args.active.id as string)
+
+        if (columnId === activeColumnId) {
+          // Same column — only replace with the first item when the pointer is
+          // above all items so the placeholder animates to the correct position.
+          const topY = Math.min(
+            ...columnContainers
+              .map(c => args.droppableRects.get(c.id)?.top ?? Infinity)
+              .filter(y => y < Infinity)
+          )
+          if (args.pointerCoordinates && args.pointerCoordinates.y < topY) {
+            const sorted = columnContainers
+              .map(c => ({ id: c.id, top: args.droppableRects.get(c.id)?.top ?? Infinity }))
+              .sort((a, b) => a.top - b.top)
+            return [{ id: sorted[0].id }]
+          }
+          // Pointer is within the column but not above all items — fall through
+          // to return the column droppable (triggers reorder-to-top on drop,
+          // same as the pre-fix behaviour; in-gap drops are rare at release time).
+        } else {
+          // Different column — use closestCenter so groups are detectable even
+          // when the pointer isn't exactly within their rect.
+          const closest = closestCenter({ ...args, droppableContainers: columnContainers })
+          if (closest.length > 0) return closest
+        }
       }
+
       return [columnCollision]
     }
 
