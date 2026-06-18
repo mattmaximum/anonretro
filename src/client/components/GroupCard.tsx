@@ -48,7 +48,7 @@ export default function GroupCard({ group, isAdmin, locked, myVotes, isDraggingA
         className={`relative w-full bg-surface rounded p-3 flex gap-2 group text-left transition-colors cursor-pointer ${
           isHoveredOver
             ? 'border-2 border-accent ring-2 ring-accent/30'
-            : 'border border-accent/40 hover:border-accent/70'
+            : 'border-2 border-accent/60 hover:border-accent/80'
         }`}
       >
         {/* Drag handle — facilitator only */}

@@ -8,7 +8,7 @@ import {
   getVotesByParticipant, recordDailyCardCreated, recordDailyTimerStarted,
   getMaxPositionInColumn, updateCardPosition, reorderCardTx,
   getCardGroupsByBoard, getCardsByGroup,
-  createCardGroupTx, addCardToGroupTx, unstackCardTx, moveCardGroupTx,
+  createSingleCardGroupTx, createCardGroupTx, addCardToGroupTx, unstackCardTx, moveCardGroupTx,
   getCardGroup, getMaxGroupPositionInColumn, updateCardGroupPosition,
 } from './db.js'
 import db from './db.js'
@@ -523,6 +523,18 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (msg.card_id === msg.target_card_id) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
           const groupId = nanoid(21)
           createCardGroupTx(groupId, boardId, card1.column_id, msg.card_id, msg.target_card_id, Math.floor(Date.now() / 1000))
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_group_init': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          if (!card || card.board_id !== boardId) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          if (card.group_id) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          const groupId = nanoid(21)
+          createSingleCardGroupTx(groupId, boardId, card.column_id, msg.card_id, Math.floor(Date.now() / 1000))
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcastCardsReordered(boardId, board.blur_enabled === 1)
           break

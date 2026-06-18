@@ -16,11 +16,12 @@ interface Props {
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
+  onConvertToGroup?: (cardId: string) => void
   myVotes: Set<string>
 }
 
 
-export default function Card({ card, revealedIds, revealIndex, locked, isExpanded, isAdmin, isDraggingActive, onExpand, onCollapse, onVote, onEdit, onDelete, myVotes }: Props) {
+export default function Card({ card, revealedIds, revealIndex, locked, isExpanded, isAdmin, isDraggingActive, onExpand, onCollapse, onVote, onEdit, onDelete, onConvertToGroup, myVotes }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(card.content)
   const contentRef = useRef<HTMLParagraphElement>(null)
@@ -146,6 +147,22 @@ export default function Card({ card, revealedIds, revealIndex, locked, isExpande
                 ✕
               </button>
             </div>
+          )}
+
+          {/* Convert to Group — admin only, shown on hover */}
+          {isAdmin && !locked && onConvertToGroup && (
+            <button
+              title="Convert to Group"
+              onClick={() => onConvertToGroup(card.id)}
+              className="hidden group-hover:flex items-center text-text-3 hover:text-accent transition-colors px-1"
+              aria-label="Convert to Group"
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 9.5L6.5 12L11 9.5"/>
+                <path d="M2 6.5L6.5 9L11 6.5"/>
+                <polygon points="6.5,1 11,3.5 6.5,6 2,3.5" fill="currentColor" fillOpacity="0.4" strokeWidth="1.3"/>
+              </svg>
+            </button>
           )}
 
           {/* Vote button */}

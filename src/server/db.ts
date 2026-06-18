@@ -437,6 +437,15 @@ export const reorderCardTx = db.transaction((boardId: string, cardId: string, co
   return true
 })
 
+export const createSingleCardGroupTx = db.transaction((groupId: string, boardId: string, columnId: string, cardId: string, now: number) => {
+  const card = getCard.get(cardId) as { position: number } | undefined
+  const position = card?.position ?? 1
+  insertCardGroup.run(groupId, boardId, columnId, position, now)
+  setCardGroup.run(groupId, cardId)
+  updateCardPosition.run(1, cardId)
+  return true
+})
+
 export const createCardGroupTx = db.transaction((groupId: string, boardId: string, columnId: string, cardId1: string, cardId2: string, now: number) => {
   // Get position of cardId2 (the card being dropped onto) — group takes its spot
   const card2 = getCard.get(cardId2) as { position: number } | undefined

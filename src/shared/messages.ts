@@ -19,6 +19,7 @@ export const InboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('admin:card_move'),         admin_token: z.string(), card_id: z.string(), column_id: z.string() }),
   z.object({ type: z.literal('admin:card_reorder'),      admin_token: z.string(), card_id: z.string(), column_id: z.string(), new_index: z.number().int().min(0) }),
   z.object({ type: z.literal('admin:card_group_create'), admin_token: z.string(), card_id: z.string(), target_card_id: z.string() }),
+  z.object({ type: z.literal('admin:card_group_init'),   admin_token: z.string(), card_id: z.string() }),
   z.object({ type: z.literal('admin:card_group_add'),    admin_token: z.string(), card_id: z.string(), group_id: z.string() }),
   z.object({ type: z.literal('admin:card_unstack'),      admin_token: z.string(), card_id: z.string(), group_id: z.string() }),
   z.object({ type: z.literal('admin:card_group_move'),   admin_token: z.string(), group_id: z.string(), column_id: z.string() }),

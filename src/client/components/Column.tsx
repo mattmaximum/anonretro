@@ -22,11 +22,12 @@ interface Props {
   onVote: (cardId: string) => void
   onEdit: (cardId: string, content: string) => void
   onDelete: (cardId: string) => void
+  onConvertToGroup?: (cardId: string) => void
   dragOverGroupId?: string | null
   onOpenGroupModal: (groupId: string) => void
 }
 
-export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, dragOverGroupId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onOpenGroupModal }: Props) {
+export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, dragOverGroupId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onConvertToGroup, onOpenGroupModal }: Props) {
   const [draft, setDraft] = useState('')
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
@@ -121,6 +122,7 @@ export default function Column({ name, columnId, cards, groups, revealedIds, rev
                 onVote={onVote}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onConvertToGroup={onConvertToGroup}
               />
             )
           })}

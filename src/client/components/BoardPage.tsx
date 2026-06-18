@@ -66,15 +66,6 @@ export default function BoardPage() {
   // Group modal
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
 
-  // Track pointer Y for 3-way collision detection (gap vs stack zone)
-  const pointerYRef = useRef(0)
-
-  // Holds the live getBoundingClientRect() of the card currently under the pointer,
-  // updated by collisionDetection on every pointer event. Used in handleDragEnd for
-  // the center-zone check instead of over.rect, which comes from dnd-kit's stale
-  // droppableRects cache (ResizeObserver misses CSS translateY position shifts).
-  const freshItemRectRef = useRef<{ top: number; height: number } | null>(null)
-
   const reconnectCount = useRef(0)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -93,58 +84,20 @@ export default function BoardPage() {
 
   // Collision detection for multi-container sortable drag.
   //
-  // We read live getBoundingClientRect() from each droppable's DOM node instead
-  // of using args.droppableRects. The cache in droppableRects is backed by
-  // ResizeObserver, which fires only on element SIZE changes — not on CSS
-  // translateY position shifts applied by SortableContext. Without fresh rects,
-  // the 3-way center/gap zone check in handleDragEnd compares the pointer
-  // against the card's pre-animation position, producing random stack vs sort.
+  // Same-column: pointerWithin for items; when the pointer is above all items
+  // (in the animation gap at the top), return the first item so the
+  // SortableContext placeholder animates to slot 0.
   //
-  // Same-column: direct pointer-in-rect check. When the pointer is above all
-  // items (e.g., the gap left by the SortableContext animation), return the
-  // topmost item so the placeholder renders at the top.
-  //
-  // Cross-column: closestCenter within the target column so groups remain
-  // detectable even when the pointer is not pixel-perfect within their rect.
+  // Cross-column: closestCenter within the target column so groups are
+  // detectable even when the pointer isn't pixel-perfect within their rect.
   const collisionDetection: CollisionDetection = useCallback((args) => {
-    const { pointerCoordinates } = args
-    if (!pointerCoordinates) return rectIntersection(args)
+    const pointerCollisions = pointerWithin(args)
+    const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
+    if (itemCollisions.length > 0) return itemCollisions
 
-    const px = pointerCoordinates.x
-    const py = pointerCoordinates.y
-
-    // Build a fresh rect map from live DOM measurements.
-    const freshRects = new Map<string, DOMRect>()
-    for (const c of args.droppableContainers) {
-      const el = c.node.current as HTMLElement | null
-      if (el) freshRects.set(c.id as string, el.getBoundingClientRect())
-    }
-
-    function isPointerIn(id: string): boolean {
-      const r = freshRects.get(id)
-      return !!r && px >= r.left && px <= r.right && py >= r.top && py <= r.bottom
-    }
-
-    // Cards/groups under the pointer (active item excluded — can't drop on itself).
-    const itemHits = args.droppableContainers.filter(
-      c => !columnIds.has(c.id as string) && c.id !== args.active.id && isPointerIn(c.id as string)
-    )
-
-    if (itemHits.length > 0) {
-      const r = freshRects.get(itemHits[0].id as string)
-      freshItemRectRef.current = r ? { top: r.top, height: r.height } : null
-      return itemHits.map(c => ({ id: c.id }))
-    }
-
-    freshItemRectRef.current = null
-
-    // Column under the pointer.
-    const columnHit = args.droppableContainers.find(
-      c => columnIds.has(c.id as string) && isPointerIn(c.id as string)
-    )
-
-    if (columnHit) {
-      const columnId = columnHit.id as string
+    const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
+    if (columnCollision) {
+      const columnId = columnCollision.id as string
       const columnContainers = args.droppableContainers.filter(
         c => itemToColumnId.get(c.id as string) === columnId
       )
@@ -153,28 +106,27 @@ export default function BoardPage() {
         const activeColumnId = itemToColumnId.get(args.active.id as string)
 
         if (columnId === activeColumnId) {
-          // Same column: return the topmost item only when the pointer is above
-          // all items so SortableContext can animate the placeholder to the top.
-          const byTop = columnContainers
-            .map(c => ({ container: c, top: freshRects.get(c.id as string)?.top ?? Infinity }))
-            .filter(r => r.top < Infinity)
-            .sort((a, b) => a.top - b.top)
-
-          if (byTop.length > 0 && py < byTop[0].top) {
-            const r = freshRects.get(byTop[0].container.id as string)
-            freshItemRectRef.current = r ? { top: r.top, height: r.height } : null
-            return [{ id: byTop[0].container.id }]
+          // Same column: return the topmost item only when pointer is above all
+          // items so the placeholder animates to the correct slot.
+          const topY = Math.min(
+            ...columnContainers
+              .map(c => args.droppableRects.get(c.id)?.top ?? Infinity)
+              .filter(y => y < Infinity)
+          )
+          if (args.pointerCoordinates && args.pointerCoordinates.y < topY) {
+            const sorted = columnContainers
+              .map(c => ({ id: c.id, top: args.droppableRects.get(c.id)?.top ?? Infinity }))
+              .sort((a, b) => a.top - b.top)
+            return [{ id: sorted[0].id }]
           }
-          // Pointer is in the column gap but not above all items — return the
-          // column droppable (handleDragEnd treats this as reorder-to-top).
         } else {
-          // Cross-column: closestCenter to handle groups and cards equally.
+          // Cross-column: closestCenter to find groups and cards equally.
           const closest = closestCenter({ ...args, droppableContainers: columnContainers })
           if (closest.length > 0) return closest
         }
       }
 
-      return [{ id: columnHit.id }]
+      return [columnCollision]
     }
 
     return rectIntersection(args)
@@ -191,12 +143,6 @@ export default function BoardPage() {
   const dragOverGroupId = activeCardId && !activeCardId.startsWith('group:') && dragOverId?.startsWith('group:')
     ? dragOverId.slice('group:'.length)
     : null
-
-  useEffect(() => {
-    function track(e: PointerEvent) { pointerYRef.current = e.clientY }
-    window.addEventListener('pointermove', track, { passive: true })
-    return () => window.removeEventListener('pointermove', track)
-  }, [])
 
   // ── Join flow ───────────────────────────────────────────────────────────────
 
@@ -368,7 +314,6 @@ export default function BoardPage() {
 
   function handleDragStart(event: DragStartEvent) {
     setActiveCardId(event.active.id as string)
-    freshItemRectRef.current = null
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -473,39 +418,41 @@ export default function BoardPage() {
       return
     }
 
-    // ── Card dropped on another card ──
+    // ── Card dropped on another card — always reorder ──
+    // Stacking is now done via the "Convert to Group" button on each card.
     const overCard = cards.find(c => c.id === overId)
     if (!overCard || card.column_id !== overCard.column_id) return
 
-    // 3-way detection: use the fresh rect captured in collisionDetection rather
-    // than over.rect, which is from the stale droppableRects cache and won't
-    // reflect the CSS translateY shift that SortableContext applied to the card.
-    const overRect = freshItemRectRef.current ?? over.rect
-    const py = pointerYRef.current
-    const inCenterZone = py > overRect.top + overRect.height * 0.2
-      && py < overRect.top + overRect.height * 0.8
-
-    if (inCenterZone) {
-      // Stack: create group from two cards
-      // Optimistic: remove both from top-level (server will send cards_reordered)
-      setCards(prev => prev.filter(c => c.id !== activeId && c.id !== overId))
-      send({ type: 'admin:card_group_create', admin_token: adminToken, card_id: activeId, target_card_id: overId })
-    } else {
-      // Gap zone → reorder
-      const columnCards = cards.filter(c => c.column_id === card.column_id)
-      const oldIndex = columnCards.findIndex(c => c.id === activeId)
-      const newIndex = columnCards.findIndex(c => c.id === overId)
-      if (oldIndex === newIndex) return
-      const reordered = arrayMove(columnCards, oldIndex, newIndex)
-      setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
-      send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: newIndex })
-    }
+    const columnCards = cards.filter(c => c.column_id === card.column_id)
+    const oldIndex = columnCards.findIndex(c => c.id === activeId)
+    const newIndex = columnCards.findIndex(c => c.id === overId)
+    if (oldIndex === newIndex) return
+    const reordered = arrayMove(columnCards, oldIndex, newIndex)
+    setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
+    send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: newIndex })
   }
 
   function getMergedColumnItems(allCards: CardData[], allGroups: GroupData[], columnId: string): string[] {
     const colCards = allCards.filter(c => c.column_id === columnId).map(c => ({ id: c.id, pos: c.position }))
     const colGroups = allGroups.filter(g => g.column_id === columnId).map(g => ({ id: `group:${g.id}`, pos: g.position }))
     return [...colCards, ...colGroups].sort((a, b) => a.pos - b.pos).map(i => i.id)
+  }
+
+  function handleConvertToGroup(cardId: string) {
+    if (!adminToken) return
+    const card = cards.find(c => c.id === cardId)
+    if (!card) return
+    // Optimistic: move card out of top-level and create a temporary group.
+    // The server broadcasts cards_reordered with the real group ID.
+    const tempGroupId = `init-${cardId}`
+    setCards(prev => prev.filter(c => c.id !== cardId))
+    setGroups(prev => [...prev, {
+      id: tempGroupId,
+      column_id: card.column_id,
+      position: card.position,
+      child_cards: [{ ...card, group_id: tempGroupId }],
+    }])
+    send({ type: 'admin:card_group_init', admin_token: adminToken, card_id: cardId })
   }
 
   // Keep browser tab title in sync
@@ -730,6 +677,7 @@ export default function BoardPage() {
                   }}
                   onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
                   onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+                  onConvertToGroup={isAdmin ? handleConvertToGroup : undefined}
                   onOpenGroupModal={setOpenGroupId}
                 />
               ))}
@@ -799,6 +747,7 @@ export default function BoardPage() {
               }}
               onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
               onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+              onConvertToGroup={isAdmin ? handleConvertToGroup : undefined}
               onOpenGroupModal={setOpenGroupId}
             />
           </div>
