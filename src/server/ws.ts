@@ -202,6 +202,16 @@ function broadcastCardsReordered(boardId: string, blurEnabled: boolean) {
   }
 }
 
+function sendCardsReorderedToSocket(ws: WebSocket, boardId: string, viewerToken: string, blurEnabled: boolean) {
+  const iMap = buildIdentityMap(boardId)
+  const allCards = getCards.all(boardId) as any[]
+  const perViewerCards = allCards
+    .filter((c: any) => !c.group_id)
+    .map((c: any) => buildCard({ ...c, _color: iMap.get(c.creator_token)?.color, _animal: iMap.get(c.creator_token)?.animal }, viewerToken, blurEnabled))
+  const perViewerGroups = buildGroups(boardId, iMap, viewerToken, blurEnabled)
+  send(ws, { type: 'cards_reordered', cards: perViewerCards, groups: perViewerGroups })
+}
+
 function reorderGroupInColumnTx(boardId: string, groupId: string, columnId: string, newIndex: number) {
   type PosRow = { id: string; position: number; kind: 'card' | 'group' }
   const ungroupedCards = db.prepare<[string, string]>(
@@ -504,11 +514,13 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
           const card1 = getCard.get(msg.card_id) as any
           const card2 = getCard.get(msg.target_card_id) as any
-          if (!card1 || card1.board_id !== boardId) return
-          if (!card2 || card2.board_id !== boardId) return
-          if (card1.group_id || card2.group_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
-          if (card1.column_id !== card2.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
-          if (msg.card_id === msg.target_card_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          // On rejection: send the requesting socket current state to reverse the
+          // optimistic removal the client already applied to both cards.
+          if (!card1 || card1.board_id !== boardId) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          if (!card2 || card2.board_id !== boardId) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          if (card1.group_id || card2.group_id) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          if (card1.column_id !== card2.column_id) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
+          if (msg.card_id === msg.target_card_id) { sendCardsReorderedToSocket(ws, boardId, token, board.blur_enabled === 1); return }
           const groupId = nanoid(21)
           createCardGroupTx(groupId, boardId, card1.column_id, msg.card_id, msg.target_card_id, Math.floor(Date.now() / 1000))
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
