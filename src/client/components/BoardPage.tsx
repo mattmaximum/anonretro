@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin, rectIntersection } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, CollisionDetection } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
@@ -73,6 +73,15 @@ export default function BoardPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
+  // Use pointer position (not dragged rect) as primary collision signal so that
+  // the card directly under the pointer is always the `over` target. Falls back
+  // to rect intersection when no droppable contains the pointer (e.g. between gaps).
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const pointerCollisions = pointerWithin(args)
+    if (pointerCollisions.length > 0) return pointerCollisions
+    return rectIntersection(args)
+  }, [])
+
   useEffect(() => {
     function track(e: PointerEvent) { pointerYRef.current = e.clientY }
     window.addEventListener('pointermove', track, { passive: true })
@@ -134,16 +143,25 @@ export default function BoardPage() {
         break
 
       case 'card_update':
-        setCards(prev => {
-          const idx = prev.findIndex(c => c.id === msg.card.id)
-          if (idx === -1) return [...prev, msg.card]
-          const next = [...prev]
-          next[idx] = msg.card
-          return next
-        })
-        // Sync vote state: if this is our own card_update after a vote toggle,
-        // the server is authoritative on what we've voted.
-        // We handle optimistic updates via onVote below; server confirms via card_update.
+        if (msg.card.group_id) {
+          // Grouped card — update inside the group's child_cards, not top-level cards
+          setGroups(prev => prev.map(g => {
+            if (g.id !== msg.card.group_id) return g
+            const childIdx = g.child_cards.findIndex(c => c.id === msg.card.id)
+            if (childIdx === -1) return g
+            const next = [...g.child_cards]
+            next[childIdx] = msg.card
+            return { ...g, child_cards: next }
+          }))
+        } else {
+          setCards(prev => {
+            const idx = prev.findIndex(c => c.id === msg.card.id)
+            if (idx === -1) return [...prev, msg.card]
+            const next = [...prev]
+            next[idx] = msg.card
+            return next
+          })
+        }
         break
 
       case 'card_deleted':
@@ -264,9 +282,20 @@ export default function BoardPage() {
         send({ type: 'admin:card_group_move', admin_token: adminToken, group_id: groupId, column_id: overId })
       } else {
         const card = cards.find(c => c.id === activeId)
-        if (!card || card.column_id === overId) return
-        setCards(prev => prev.map(c => c.id === activeId ? { ...c, column_id: overId } : c))
-        send({ type: 'admin:card_move', admin_token: adminToken, card_id: activeId, column_id: overId })
+        if (!card) return
+        if (card.column_id === overId) {
+          // Same-column header/background drop → reorder to top
+          const columnCards = cards.filter(c => c.column_id === card.column_id)
+          const oldIndex = columnCards.findIndex(c => c.id === activeId)
+          if (oldIndex === 0) return
+          const reordered = arrayMove(columnCards, oldIndex, 0)
+          setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
+          send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: 0 })
+        } else {
+          // Different column → move card there
+          setCards(prev => prev.map(c => c.id === activeId ? { ...c, column_id: overId } : c))
+          send({ type: 'admin:card_move', admin_token: adminToken, card_id: activeId, column_id: overId })
+        }
       }
       return
     }
@@ -552,7 +581,7 @@ export default function BoardPage() {
         {/* Columns — desktop */}
         <main className="flex-1 p-4 overflow-auto">
           {/* Desktop: grid */}
-          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
               {fmt.columns.map(col => (
                 <Column
