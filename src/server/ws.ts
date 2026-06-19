@@ -212,6 +212,34 @@ function sendCardsReorderedToSocket(ws: WebSocket, boardId: string, viewerToken:
   send(ws, { type: 'cards_reordered', cards: perViewerCards, groups: perViewerGroups })
 }
 
+function reorderCardInColumnTx(boardId: string, cardId: string, columnId: string, newIndex: number) {
+  type PosRow = { id: string; position: number; kind: 'card' | 'group' }
+  const ungroupedCards = db.prepare<[string, string]>(
+    "SELECT id, position, 'card' as kind FROM cards WHERE board_id = ? AND column_id = ? AND group_id IS NULL ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+  const groups = db.prepare<[string, string]>(
+    "SELECT id, position, 'group' as kind FROM card_groups WHERE board_id = ? AND column_id = ? ORDER BY position ASC"
+  ).all(boardId, columnId) as PosRow[]
+
+  const all = [...ungroupedCards, ...groups].sort((a, b) => a.position - b.position)
+  const fromIndex = all.findIndex(r => r.id === cardId)
+  if (fromIndex === -1) return false
+
+  const reordered = [...all]
+  reordered.splice(fromIndex, 1)
+  const clampedIndex = Math.min(newIndex, reordered.length)
+  reordered.splice(clampedIndex, 0, all[fromIndex])
+
+  for (let i = 0; i < reordered.length; i++) {
+    if (reordered[i].kind === 'card') {
+      updateCardPosition.run(i + 1, reordered[i].id)
+    } else {
+      updateCardGroupPosition.run(i + 1, reordered[i].id)
+    }
+  }
+  return true
+}
+
 function reorderGroupInColumnTx(boardId: string, groupId: string, columnId: string, newIndex: number) {
   type PosRow = { id: string; position: number; kind: 'card' | 'group' }
   const ungroupedCards = db.prepare<[string, string]>(
@@ -588,6 +616,19 @@ export default async function wsRoutes(fastify: FastifyInstance) {
           if (group.column_id !== msg.column_id) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
           // Reorder groups and ungrouped cards together using UNION positions
           reorderGroupInColumnTx(boardId, msg.group_id, msg.column_id, msg.new_index)
+          updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
+          broadcastCardsReordered(boardId, board.blur_enabled === 1)
+          break
+        }
+
+        case 'admin:card_reorder_mixed': {
+          if (!verifyAdmin(board, msg.admin_token)) { send(ws, { type: 'error', code: 'NOT_ADMIN' }); return }
+          const card = getCard.get(msg.card_id) as any
+          if (!card || card.board_id !== boardId || card.group_id) return
+          if (!validateColumn(board.format, msg.column_id)) { send(ws, { type: 'error', code: 'INVALID_MESSAGE' }); return }
+          if (card.column_id !== msg.column_id) return
+          // Reorder card among all column items (ungrouped cards + groups) by position
+          reorderCardInColumnTx(boardId, msg.card_id, msg.column_id, msg.new_index)
           updateBoardActivity.run(Math.floor(Date.now() / 1000), boardId)
           broadcastCardsReordered(boardId, board.blur_enabled === 1)
           break

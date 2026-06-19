@@ -24,6 +24,7 @@ export const InboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('admin:card_unstack'),      admin_token: z.string(), card_id: z.string(), group_id: z.string() }),
   z.object({ type: z.literal('admin:card_group_move'),   admin_token: z.string(), group_id: z.string(), column_id: z.string() }),
   z.object({ type: z.literal('admin:card_group_reorder'), admin_token: z.string(), group_id: z.string(), column_id: z.string(), new_index: z.number().int().min(0) }),
+  z.object({ type: z.literal('admin:card_reorder_mixed'), admin_token: z.string(), card_id: z.string(), column_id: z.string(), new_index: z.number().int().min(0) }),
 ])
 
 export type InboundMessage = z.infer<typeof InboundSchema>

@@ -62,6 +62,10 @@ export default function BoardPage() {
 
   // Drag state (facilitator only)
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
+  // Set in collision detection when the column droppable is returned for a
+  // same-column gap drop. 'top' = pointer above all items, 'bottom' = below all.
+  // handleDragEnd reads this to choose the correct mixed reorder index.
+  const sameColDropPositionRef = useRef<'top' | 'bottom' | null>(null)
 
   // Group modal
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
@@ -116,23 +120,49 @@ export default function BoardPage() {
       })
       if (liveHit) return [{ id: liveHit.id }]
 
-      // No live hit — pointer is in the column gap or above all items.
-      // Check if still within the same column's droppable area.
+      // No live hit — pointer is in the column gap. Check if within same column area.
       const sameColDroppable = args.droppableContainers.find(c => c.id === activeColumnId)
       if (sameColDroppable) {
         const colEl = sameColDroppable.node.current as HTMLElement | null
         const colR = colEl?.getBoundingClientRect()
         if (colR && px >= colR.left && px <= colR.right && py >= colR.top && py <= colR.bottom) {
-          // Inside same column gap. Return the topmost item for sort-placeholder
-          // animation — but only if it's a plain card. Returning a GroupCard as
-          // the collision target would trigger add-to-group in handleDragEnd.
-          const byLiveTop = sameColContainers
-            .map(c => ({ id: c.id as string, top: (c.node.current as HTMLElement | null)?.getBoundingClientRect().top ?? Infinity }))
-            .filter(r => r.top < Infinity)
+          // Build live positions for all same-column non-active items.
+          const byLivePos = sameColContainers
+            .map(c => {
+              const el = c.node.current as HTMLElement | null
+              if (!el) return null
+              const r = el.getBoundingClientRect()
+              return { id: c.id as string, top: r.top, bottom: r.bottom }
+            })
+            .filter((r): r is { id: string; top: number; bottom: number } => r !== null)
             .sort((a, b) => a.top - b.top)
-          if (byLiveTop.length > 0 && py < byLiveTop[0].top && !byLiveTop[0].id.startsWith('group:')) {
-            return [{ id: byLiveTop[0].id }]
+
+          if (byLivePos.length === 0 || py < byLivePos[0].top) {
+            // Above all items — return topmost card for placeholder animation.
+            // If topmost is a group, return column with 'top' so handleDragEnd
+            // uses mixed reorder to index 0 (above the group).
+            if (byLivePos.length > 0 && !byLivePos[0].id.startsWith('group:')) {
+              return [{ id: byLivePos[0].id }]
+            }
+            sameColDropPositionRef.current = 'top'
+            return [{ id: activeColumnId as string }]
           }
+
+          if (py > byLivePos[byLivePos.length - 1].bottom) {
+            // Below all items — user dragged to empty column space at the bottom.
+            // handleDragEnd will use mixed reorder to place the card last.
+            sameColDropPositionRef.current = 'bottom'
+            return [{ id: activeColumnId as string }]
+          }
+
+          // Between items — return the nearest plain card so SortableContext
+          // shows the sort placeholder at the right gap.
+          const itemBelow = byLivePos.find(r => r.top >= py && !r.id.startsWith('group:'))
+          const itemAbove = [...byLivePos].reverse().find(r => r.bottom <= py && !r.id.startsWith('group:'))
+          const nearest = itemBelow ?? itemAbove
+          if (nearest) return [{ id: nearest.id }]
+          // Only groups nearby — fall through to column.
+          sameColDropPositionRef.current = 'top'
           return [{ id: activeColumnId as string }]
         }
       }
@@ -344,22 +374,12 @@ export default function BoardPage() {
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveCardId(null)
-    // Capture before clearing — React batches the setState so dragOverId is
-    // still the old value within this synchronous handler, but we capture it
-    // explicitly to make the intent clear.
-    const lastDragOverId = dragOverId
     setDragOverId(null)
     const { active, over } = event
     if (!over || !adminToken) return
 
     const activeId = active.id as string
-    // If the pointer slipped just outside a group's rect at release,
-    // collision detection returns the column. Use the last recorded dragOverId
-    // as a fallback so a group that was highlighted stays the target.
-    const effectiveOverId = (columnIds.has(over.id as string) && lastDragOverId?.startsWith('group:'))
-      ? lastDragOverId
-      : (over.id as string)
-    let overId = effectiveOverId
+    const overId = over.id as string
     const isActiveGroup = activeId.startsWith('group:')
     const isOverGroup = overId.startsWith('group:')
 
@@ -376,13 +396,31 @@ export default function BoardPage() {
         const card = cards.find(c => c.id === activeId)
         if (!card) return
         if (card.column_id === overId) {
-          // Same-column header/background drop → reorder to top
-          const columnCards = cards.filter(c => c.column_id === card.column_id)
-          const oldIndex = columnCards.findIndex(c => c.id === activeId)
-          if (oldIndex === 0) return
-          const reordered = arrayMove(columnCards, oldIndex, 0)
-          setCards(prev => [...prev.filter(c => c.column_id !== card.column_id), ...reordered])
-          send({ type: 'admin:card_reorder', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: 0 })
+          // Same-column gap drop — sort to top or bottom of the merged column
+          // order (cards + groups interleaved by position). The sameColDropPositionRef
+          // set by collision detection tells us which end the pointer was near.
+          const dropPos = sameColDropPositionRef.current
+          sameColDropPositionRef.current = null
+          const mergedItems = getMergedColumnItems(cards, groups, card.column_id)
+          const oldIdx = mergedItems.findIndex(i => i === activeId)
+          const newIdx = dropPos === 'bottom' ? mergedItems.length - 1 : 0
+          if (oldIdx === newIdx) return
+          // Optimistic: reorder all merged items and reassign sequential positions.
+          const reordered = [...mergedItems]
+          reordered.splice(oldIdx, 1)
+          reordered.splice(newIdx, 0, activeId)
+          setGroups(prev => prev.map(g => {
+            const idx = reordered.indexOf(`group:${g.id}`)
+            if (g.column_id !== card.column_id || idx === -1) return g
+            return { ...g, position: idx + 1 }
+          }))
+          setCards(prev => prev.map(c => {
+            if (c.column_id !== card.column_id) return c
+            const idx = reordered.indexOf(c.id)
+            if (idx === -1) return c
+            return { ...c, position: idx + 1 }
+          }))
+          send({ type: 'admin:card_reorder_mixed', admin_token: adminToken, card_id: activeId, column_id: card.column_id, new_index: newIdx })
         } else {
           // Different column → move card there
           setCards(prev => prev.map(c => c.id === activeId ? { ...c, column_id: overId } : c))
