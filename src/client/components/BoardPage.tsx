@@ -392,8 +392,33 @@ export default function BoardPage() {
       if (isActiveGroup) {
         const groupId = activeId.slice('group:'.length)
         const group = groups.find(g => g.id === groupId)
-        if (!group || group.column_id === overId) return
-        // Optimistic: move group and its children to target column
+        if (!group) return
+        if (group.column_id === overId) {
+          // Same-column gap drop (e.g. extended spacer below last card).
+          const dropPos = sameColDropPositionRef.current
+          sameColDropPositionRef.current = null
+          const mergedItems = getMergedColumnItems(cards, groups, group.column_id)
+          const oldIdx = mergedItems.findIndex(i => i === activeId)
+          const newIdx = dropPos === 'bottom' ? mergedItems.length - 1 : 0
+          if (oldIdx === newIdx) return
+          const reordered = [...mergedItems]
+          reordered.splice(oldIdx, 1)
+          reordered.splice(newIdx, 0, activeId)
+          setGroups(prev => prev.map(g => {
+            const idx = reordered.indexOf(`group:${g.id}`)
+            if (g.column_id !== group.column_id || idx === -1) return g
+            return { ...g, position: idx + 1 }
+          }))
+          setCards(prev => prev.map(c => {
+            if (c.column_id !== group.column_id) return c
+            const idx = reordered.indexOf(c.id)
+            if (idx === -1) return c
+            return { ...c, position: idx + 1 }
+          }))
+          send({ type: 'admin:card_group_reorder', admin_token: adminToken, group_id: groupId, column_id: group.column_id, new_index: newIdx })
+          return
+        }
+        // Cross-column group move
         setGroups(prev => prev.map(g => g.id === groupId ? { ...g, column_id: overId } : g))
         send({ type: 'admin:card_group_move', admin_token: adminToken, group_id: groupId, column_id: overId })
       } else {
