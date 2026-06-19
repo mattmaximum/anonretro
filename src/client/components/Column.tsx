@@ -128,6 +128,11 @@ export default function Column({ name, columnId, cards, groups, revealedIds, rev
           })}
         </div>
       </SortableContext>
+
+      {/* Extra drop-zone spacer — extends the column's droppable area and ring
+          outline by one card height so the user can release anywhere below the
+          last card to sort into that column at the bottom position. */}
+      {isDragActive && <div className="h-20 flex-shrink-0" aria-hidden />}
     </div>
   )
 }
