@@ -88,17 +88,13 @@ export default function BoardPage() {
 
   // Collision detection for multi-container sortable drag.
   //
-  // Same-column items use live getBoundingClientRect() instead of the
-  // droppableRects cache. The cache is backed by ResizeObserver, which only
-  // fires on SIZE changes — not the CSS translateY position shifts that
-  // SortableContext applies during drag animation. Stale rects cause a GroupCard
-  // at position 0 to absorb drops in the animated gap above it, because the
-  // cached rect still covers the card's original (pre-shift) position.
+  // Column identification uses horizontal position only (no vertical cutoff),
+  // so the user can drop anywhere below the last card in a column — even far
+  // below the column's bounding box — and still land in that column.
   //
-  // Cross-column items stay on the cached path: their column's SortableContext
-  // isn't animating, so rects are accurate. Plain cards in other columns are
-  // NOT returned as item targets — they fall through to the column droppable so
-  // handleDragEnd routes the drop as a cross-column card move.
+  // Same-column item hits use live getBoundingClientRect() to avoid stale rects
+  // from SortableContext's CSS translateY animation (ResizeObserver only fires
+  // on size changes, not position shifts).
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const activeColumnId = itemToColumnId.get(args.active.id as string)
     const activeIsGroup = (args.active.id as string).startsWith('group:')
@@ -106,12 +102,29 @@ export default function BoardPage() {
     const px = pointerCoordinates?.x
     const py = pointerCoordinates?.y
 
-    // ── Same-column items: live rect detection ──
-    if (px != null && py != null) {
+    if (px == null || py == null) return rectIntersection(args)
+
+    // ── Identify target column by X-coordinate only ──
+    // Columns are laid out side-by-side and don't overlap, so the horizontal
+    // band uniquely identifies the column. No Y cutoff means the entire
+    // vertical strip below (and above) a column's content still resolves to
+    // that column.
+    const allColumnContainers = args.droppableContainers.filter(c => columnIds.has(c.id as string))
+    const targetColContainer = allColumnContainers.find(c => {
+      const el = c.node.current as HTMLElement | null
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      return px >= r.left && px <= r.right
+    })
+    const targetColumnId = targetColContainer?.id as string | undefined
+
+    // ── Same column ──
+    if (targetColumnId === activeColumnId && targetColumnId != null) {
       const sameColContainers = args.droppableContainers.filter(
         c => itemToColumnId.get(c.id as string) === activeColumnId && c.id !== args.active.id
       )
 
+      // Live hit check — avoids stale rects absorbing drops in animation gaps.
       const liveHit = sameColContainers.find(c => {
         const el = c.node.current as HTMLElement | null
         if (!el) return false
@@ -120,68 +133,59 @@ export default function BoardPage() {
       })
       if (liveHit) return [{ id: liveHit.id }]
 
-      // No live hit — pointer is in the column gap. Check if within same column area.
-      const sameColDroppable = args.droppableContainers.find(c => c.id === activeColumnId)
-      if (sameColDroppable) {
-        const colEl = sameColDroppable.node.current as HTMLElement | null
-        const colR = colEl?.getBoundingClientRect()
-        if (colR && px >= colR.left && px <= colR.right && py >= colR.top && py <= colR.bottom) {
-          // Build live positions for all same-column non-active items.
-          const byLivePos = sameColContainers
-            .map(c => {
-              const el = c.node.current as HTMLElement | null
-              if (!el) return null
-              const r = el.getBoundingClientRect()
-              return { id: c.id as string, top: r.top, bottom: r.bottom }
-            })
-            .filter((r): r is { id: string; top: number; bottom: number } => r !== null)
-            .sort((a, b) => a.top - b.top)
+      // No live hit — pointer is in a gap (above, below, or between items).
+      const byLivePos = sameColContainers
+        .map(c => {
+          const el = c.node.current as HTMLElement | null
+          if (!el) return null
+          const r = el.getBoundingClientRect()
+          return { id: c.id as string, top: r.top, bottom: r.bottom }
+        })
+        .filter((r): r is { id: string; top: number; bottom: number } => r !== null)
+        .sort((a, b) => a.top - b.top)
 
-          if (byLivePos.length === 0 || py < byLivePos[0].top) {
-            // Above all items — return topmost card for placeholder animation.
-            // If topmost is a group, return column with 'top' so handleDragEnd
-            // uses mixed reorder to index 0 (above the group).
-            if (byLivePos.length > 0 && !byLivePos[0].id.startsWith('group:')) {
-              return [{ id: byLivePos[0].id }]
-            }
-            sameColDropPositionRef.current = 'top'
-            return [{ id: activeColumnId as string }]
-          }
-
-          if (py > byLivePos[byLivePos.length - 1].bottom) {
-            // Below all items — user dragged to empty column space at the bottom.
-            // handleDragEnd will use mixed reorder to place the card last.
-            sameColDropPositionRef.current = 'bottom'
-            return [{ id: activeColumnId as string }]
-          }
-
-          // Between items — return the nearest plain card so SortableContext
-          // shows the sort placeholder at the right gap.
-          const itemBelow = byLivePos.find(r => r.top >= py && !r.id.startsWith('group:'))
-          const itemAbove = [...byLivePos].reverse().find(r => r.bottom <= py && !r.id.startsWith('group:'))
-          const nearest = itemBelow ?? itemAbove
-          if (nearest) return [{ id: nearest.id }]
-          // Only groups nearby — fall through to column.
-          sameColDropPositionRef.current = 'top'
-          return [{ id: activeColumnId as string }]
+      if (byLivePos.length === 0 || py < byLivePos[0].top) {
+        // Above all items — return topmost card for sort-placeholder animation.
+        // If topmost is a group, return the column (handleDragEnd reorders to top).
+        if (byLivePos.length > 0 && !byLivePos[0].id.startsWith('group:')) {
+          return [{ id: byLivePos[0].id }]
         }
+        sameColDropPositionRef.current = 'top'
+        return [{ id: activeColumnId }]
       }
+
+      if (py > byLivePos[byLivePos.length - 1].bottom) {
+        // Below all items (including far below the column's bounding box).
+        sameColDropPositionRef.current = 'bottom'
+        return [{ id: activeColumnId }]
+      }
+
+      // Between items — return nearest plain card for sort-placeholder animation.
+      const itemBelow = byLivePos.find(r => r.top >= py && !r.id.startsWith('group:'))
+      const itemAbove = [...byLivePos].reverse().find(r => r.bottom <= py && !r.id.startsWith('group:'))
+      const nearest = itemBelow ?? itemAbove
+      if (nearest) return [{ id: nearest.id }]
+      sameColDropPositionRef.current = 'top'
+      return [{ id: activeColumnId }]
     }
 
-    // ── Cross-column detection ──
+    // ── Cross-column ──
+    // Check groups via pointerWithin (groups don't animate in non-active columns
+    // so their droppableRects are accurate).
     const pointerCollisions = pointerWithin(args)
-    const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
-
-    // Groups in other columns are valid add-to-group targets (rects accurate).
     if (!activeIsGroup) {
-      const crossColGroups = itemCollisions.filter(c =>
-        (c.id as string).startsWith('group:') && itemToColumnId.get(c.id as string) !== activeColumnId
+      const crossColGroups = pointerCollisions.filter(c =>
+        !(columnIds.has(c.id as string)) &&
+        (c.id as string).startsWith('group:') &&
+        itemToColumnId.get(c.id as string) !== activeColumnId
       )
       if (crossColGroups.length > 0) return crossColGroups
     }
 
-    // Cross-column column droppable: plain cards in other columns fall here,
-    // and handleDragEnd moves the active card/group to that column.
+    // Use horizontal-band column if found (covers far-below drops in other columns).
+    if (targetColumnId) return [{ id: targetColumnId }]
+
+    // Fallback: pointerWithin finds the column if the pointer is within its full rect.
     const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
     if (columnCollision) return [columnCollision]
 
