@@ -5,6 +5,18 @@ import type { CardData, GroupData } from '@shared/messages'
 import Card from './Card.js'
 import GroupCard from './GroupCard.js'
 
+function GhostCard({ card }: { card: CardData }) {
+  return (
+    <div className="bg-surface border border-dashed border-accent/50 rounded p-3 flex gap-2 opacity-50 pointer-events-none select-none" aria-hidden>
+      <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <p className="text-sm text-text-1 leading-relaxed whitespace-pre-wrap line-clamp-3">
+          {card.blur ? <span className="italic text-text-3">Hidden card</span> : card.content}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   name: string
   columnId: string
@@ -25,9 +37,12 @@ interface Props {
   onConvertToGroup?: (cardId: string) => void
   dragOverGroupId?: string | null
   onOpenGroupModal: (groupId: string) => void
+  ghostCard?: CardData | null
+  ghostAtEnd?: boolean
+  ghostAtStart?: boolean
 }
 
-export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, dragOverGroupId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onConvertToGroup, onOpenGroupModal }: Props) {
+export default function Column({ name, columnId, cards, groups, revealedIds, revealSequence, myVotes, locked, isAdmin, activeCardId, dragOverGroupId, expandedCardId, onExpandCard, onAddCard, onVote, onEdit, onDelete, onConvertToGroup, onOpenGroupModal, ghostCard, ghostAtEnd, ghostAtStart }: Props) {
   const [draft, setDraft] = useState('')
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
@@ -89,6 +104,9 @@ export default function Column({ name, columnId, cards, groups, revealedIds, rev
               <span className="text-text-3 text-xs">No cards yet</span>
             </div>
           )}
+          {ghostAtStart && ghostCard && (
+            <GhostCard card={ghostCard} />
+          )}
           {items.map((item) => {
             if (item.kind === 'group') {
               return (
@@ -126,6 +144,9 @@ export default function Column({ name, columnId, cards, groups, revealedIds, rev
               />
             )
           })}
+          {ghostAtEnd && ghostCard && (
+            <GhostCard card={ghostCard} />
+          )}
         </div>
       </SortableContext>
 

@@ -66,6 +66,9 @@ export default function BoardPage() {
   // same-column gap drop. 'top' = pointer above all items, 'bottom' = below all.
   // handleDragEnd reads this to choose the correct mixed reorder index.
   const sameColDropPositionRef = useRef<'top' | 'bottom' | null>(null)
+  // Ghost card preview state: which column and where (top/bottom) the ghost appears.
+  const [ghostTargetColumnId, setGhostTargetColumnId] = useState<string | null>(null)
+  const [ghostDropPosition, setGhostDropPosition] = useState<'top' | 'bottom'>('bottom')
 
   // Group modal
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
@@ -195,7 +198,39 @@ export default function BoardPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   function handleDragOver(event: DragOverEvent) {
-    setDragOverId(event.over ? (event.over.id as string) : null)
+    const overId = event.over ? (event.over.id as string) : null
+    setDragOverId(overId)
+
+    // Compute ghost preview state.
+    if (!overId) { setGhostTargetColumnId(null); return }
+
+    const activeId = event.active.id as string
+    const isActiveGroup = activeId.startsWith('group:')
+    // Ghost only applies to card drags, not group drags.
+    if (isActiveGroup) { setGhostTargetColumnId(null); return }
+
+    const activeColId = itemToColumnId.get(activeId)
+
+    if (columnIds.has(overId)) {
+      // Pointer is over a column background (gap drop or cross-column).
+      // sameColDropPositionRef is set by collisionDetection immediately before this fires.
+      setGhostTargetColumnId(overId)
+      setGhostDropPosition(sameColDropPositionRef.current ?? 'bottom')
+    } else if (!overId.startsWith('group:')) {
+      // Pointer is over a specific card.
+      const cardCol = itemToColumnId.get(overId)
+      if (cardCol && cardCol !== activeColId) {
+        // Cross-column: show ghost at bottom of destination column.
+        setGhostTargetColumnId(cardCol)
+        setGhostDropPosition('bottom')
+      } else {
+        // Same-column card-to-card: dnd-kit's gap animation handles it — no ghost.
+        setGhostTargetColumnId(null)
+      }
+    } else {
+      // Pointer is over a group — accent border on GroupCard handles the visual, no ghost.
+      setGhostTargetColumnId(null)
+    }
   }
 
   // ID of the group currently being hovered by a dragged card (not a group).
@@ -374,11 +409,13 @@ export default function BoardPage() {
 
   function handleDragStart(event: DragStartEvent) {
     setActiveCardId(event.active.id as string)
+    setGhostTargetColumnId(null)
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveCardId(null)
     setDragOverId(null)
+    setGhostTargetColumnId(null)
     const { active, over } = event
     if (!over || !adminToken) return
 
@@ -599,6 +636,13 @@ export default function BoardPage() {
   const fmt = getFormat(format)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
+  // Ghost card preview — shown in destination column during drag.
+  // Groups dragged cross-column use the accent border on GroupCard, not a ghost.
+  const activeCard = activeCardId && !activeCardId.startsWith('group:')
+    ? cards.find(c => c.id === activeCardId) ?? null
+    : null
+  const activeCardColumnId = activeCard?.column_id ?? null
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -747,33 +791,43 @@ export default function BoardPage() {
           {/* Desktop: grid */}
           <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
-              {fmt.columns.map(col => (
-                <Column
-                  key={col.id}
-                  name={col.label}
-                  columnId={col.id}
-                  cards={cards.filter(c => c.column_id === col.id)}
-                  groups={groups.filter(g => g.column_id === col.id)}
-                  revealedIds={revealedIds}
-                  revealSequence={revealSequence}
-                  myVotes={myVotes}
-                  locked={boardLocked}
-                  isAdmin={isAdmin}
-                  activeCardId={activeCardId}
-                  dragOverGroupId={dragOverGroupId}
-                  expandedCardId={expandedCardId}
-                  onExpandCard={setExpandedCardId}
-                  onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
-                  onVote={cardId => {
-                    setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
-                    send({ type: 'vote:toggle', card_id: cardId })
-                  }}
-                  onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
-                  onDelete={cardId => send({ type: 'card:delete', id: cardId })}
-                  onConvertToGroup={isAdmin ? handleConvertToGroup : undefined}
-                  onOpenGroupModal={setOpenGroupId}
-                />
-              ))}
+              {fmt.columns.map(col => {
+                // Show ghost card in destination column. For cross-column: show at ghost position.
+                // For same-column gap drops: show at top or bottom. Skip when dragging a group.
+                const isGhostTarget = !!activeCard && ghostTargetColumnId === col.id
+                const ghostAtEnd = isGhostTarget && (ghostDropPosition === 'bottom' || activeCardColumnId !== col.id)
+                const ghostAtStart = isGhostTarget && ghostDropPosition === 'top' && activeCardColumnId === col.id
+                return (
+                  <Column
+                    key={col.id}
+                    name={col.label}
+                    columnId={col.id}
+                    cards={cards.filter(c => c.column_id === col.id)}
+                    groups={groups.filter(g => g.column_id === col.id)}
+                    revealedIds={revealedIds}
+                    revealSequence={revealSequence}
+                    myVotes={myVotes}
+                    locked={boardLocked}
+                    isAdmin={isAdmin}
+                    activeCardId={activeCardId}
+                    dragOverGroupId={dragOverGroupId}
+                    expandedCardId={expandedCardId}
+                    onExpandCard={setExpandedCardId}
+                    onAddCard={content => send({ type: 'card:add', column_id: col.id, content })}
+                    onVote={cardId => {
+                      setMyVotes(prev => { const s = new Set(prev); s.has(cardId) ? s.delete(cardId) : s.add(cardId); return s })
+                      send({ type: 'vote:toggle', card_id: cardId })
+                    }}
+                    onEdit={(cardId, content) => send({ type: 'card:edit', id: cardId, content })}
+                    onDelete={cardId => send({ type: 'card:delete', id: cardId })}
+                    onConvertToGroup={isAdmin ? handleConvertToGroup : undefined}
+                    onOpenGroupModal={setOpenGroupId}
+                    ghostCard={isGhostTarget ? activeCard : null}
+                    ghostAtEnd={ghostAtEnd}
+                    ghostAtStart={ghostAtStart}
+                  />
+                )
+              })}
             </div>
             <DragOverlay dropAnimation={null}>
               {activeCardId ? (() => {
