@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, pointerWithin, rectIntersection } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin, rectIntersection } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent, DragOverEvent, CollisionDetection } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
@@ -84,48 +84,60 @@ export default function BoardPage() {
 
   // Collision detection for multi-container sortable drag.
   //
-  // Same-column: pointerWithin for items; when the pointer is above all items
-  // (in the animation gap at the top), return the first item so the
-  // SortableContext placeholder animates to slot 0.
+  // The root problem with a naive pointerWithin approach: cards in a DIFFERENT
+  // column are detected as item targets, but handleDragEnd's card-on-card path
+  // has a same-column guard and bails silently, so the drop does nothing.
+  // The user has to aim at the empty column header to get a valid drop zone.
   //
-  // Cross-column: closestCenter within the target column so groups are
-  // detectable even when the pointer isn't pixel-perfect within their rect.
+  // Fix: only treat items as targets when they're in the SAME column as the
+  // active drag (for sorting) or when they're a group in another column (for
+  // adding a card to a cross-column group). Cross-column plain cards fall
+  // through to the column droppable, which handleDragEnd handles as a move.
+  //
+  // Same-column gap above all items: return the topmost item so SortableContext
+  // animates the sort placeholder to slot 0.
   const collisionDetection: CollisionDetection = useCallback((args) => {
+    const activeColumnId = itemToColumnId.get(args.active.id as string)
+    const activeIsGroup = (args.active.id as string).startsWith('group:')
+
     const pointerCollisions = pointerWithin(args)
     const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
-    if (itemCollisions.length > 0) return itemCollisions
+
+    // Items that are valid targets for the current drag:
+    // - any item in the same column (sort or add-to-group)
+    // - groups in other columns, but only when dragging a card (add card to cross-column group)
+    const validItems = itemCollisions.filter(c => {
+      const itemColId = itemToColumnId.get(c.id as string)
+      if (itemColId === activeColumnId) return true
+      if (!activeIsGroup && (c.id as string).startsWith('group:')) return true
+      return false
+    })
+    if (validItems.length > 0) return validItems
 
     const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
     if (columnCollision) {
       const columnId = columnCollision.id as string
-      const columnContainers = args.droppableContainers.filter(
-        c => itemToColumnId.get(c.id as string) === columnId
-      )
 
-      if (columnContainers.length > 0) {
-        const activeColumnId = itemToColumnId.get(args.active.id as string)
-
-        if (columnId === activeColumnId) {
-          // Same column: return the topmost item only when pointer is above all
-          // items so the placeholder animates to the correct slot.
-          const topY = Math.min(
-            ...columnContainers
-              .map(c => args.droppableRects.get(c.id)?.top ?? Infinity)
-              .filter(y => y < Infinity)
-          )
-          if (args.pointerCoordinates && args.pointerCoordinates.y < topY) {
-            const sorted = columnContainers
-              .map(c => ({ id: c.id, top: args.droppableRects.get(c.id)?.top ?? Infinity }))
-              .sort((a, b) => a.top - b.top)
-            return [{ id: sorted[0].id }]
-          }
-        } else {
-          // Cross-column: closestCenter to find groups and cards equally.
-          const closest = closestCenter({ ...args, droppableContainers: columnContainers })
-          if (closest.length > 0) return closest
+      if (columnId === activeColumnId) {
+        // Same column: return the topmost item when the pointer is above all
+        // items so the SortableContext placeholder animates to slot 0.
+        const columnContainers = args.droppableContainers.filter(
+          c => itemToColumnId.get(c.id as string) === columnId
+        )
+        const topY = Math.min(
+          ...columnContainers
+            .map(c => args.droppableRects.get(c.id)?.top ?? Infinity)
+            .filter(y => y < Infinity)
+        )
+        if (columnContainers.length > 0 && args.pointerCoordinates && args.pointerCoordinates.y < topY) {
+          const sorted = columnContainers
+            .map(c => ({ id: c.id, top: args.droppableRects.get(c.id)?.top ?? Infinity }))
+            .sort((a, b) => a.top - b.top)
+          return [{ id: sorted[0].id }]
         }
       }
-
+      // Cross-column OR same-column non-gap: return the column droppable.
+      // handleDragEnd handles cross-column as a card/group move.
       return [columnCollision]
     }
 
