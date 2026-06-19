@@ -84,62 +84,76 @@ export default function BoardPage() {
 
   // Collision detection for multi-container sortable drag.
   //
-  // The root problem with a naive pointerWithin approach: cards in a DIFFERENT
-  // column are detected as item targets, but handleDragEnd's card-on-card path
-  // has a same-column guard and bails silently, so the drop does nothing.
-  // The user has to aim at the empty column header to get a valid drop zone.
+  // Same-column items use live getBoundingClientRect() instead of the
+  // droppableRects cache. The cache is backed by ResizeObserver, which only
+  // fires on SIZE changes — not the CSS translateY position shifts that
+  // SortableContext applies during drag animation. Stale rects cause a GroupCard
+  // at position 0 to absorb drops in the animated gap above it, because the
+  // cached rect still covers the card's original (pre-shift) position.
   //
-  // Fix: only treat items as targets when they're in the SAME column as the
-  // active drag (for sorting) or when they're a group in another column (for
-  // adding a card to a cross-column group). Cross-column plain cards fall
-  // through to the column droppable, which handleDragEnd handles as a move.
-  //
-  // Same-column gap above all items: return the topmost item so SortableContext
-  // animates the sort placeholder to slot 0.
+  // Cross-column items stay on the cached path: their column's SortableContext
+  // isn't animating, so rects are accurate. Plain cards in other columns are
+  // NOT returned as item targets — they fall through to the column droppable so
+  // handleDragEnd routes the drop as a cross-column card move.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const activeColumnId = itemToColumnId.get(args.active.id as string)
     const activeIsGroup = (args.active.id as string).startsWith('group:')
+    const { pointerCoordinates } = args
+    const px = pointerCoordinates?.x
+    const py = pointerCoordinates?.y
 
+    // ── Same-column items: live rect detection ──
+    if (px != null && py != null) {
+      const sameColContainers = args.droppableContainers.filter(
+        c => itemToColumnId.get(c.id as string) === activeColumnId && c.id !== args.active.id
+      )
+
+      const liveHit = sameColContainers.find(c => {
+        const el = c.node.current as HTMLElement | null
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        return px >= r.left && px <= r.right && py >= r.top && py <= r.bottom
+      })
+      if (liveHit) return [{ id: liveHit.id }]
+
+      // No live hit — pointer is in the column gap or above all items.
+      // Check if still within the same column's droppable area.
+      const sameColDroppable = args.droppableContainers.find(c => c.id === activeColumnId)
+      if (sameColDroppable) {
+        const colEl = sameColDroppable.node.current as HTMLElement | null
+        const colR = colEl?.getBoundingClientRect()
+        if (colR && px >= colR.left && px <= colR.right && py >= colR.top && py <= colR.bottom) {
+          // Inside same column gap. Return the topmost item for sort-placeholder
+          // animation — but only if it's a plain card. Returning a GroupCard as
+          // the collision target would trigger add-to-group in handleDragEnd.
+          const byLiveTop = sameColContainers
+            .map(c => ({ id: c.id as string, top: (c.node.current as HTMLElement | null)?.getBoundingClientRect().top ?? Infinity }))
+            .filter(r => r.top < Infinity)
+            .sort((a, b) => a.top - b.top)
+          if (byLiveTop.length > 0 && py < byLiveTop[0].top && !byLiveTop[0].id.startsWith('group:')) {
+            return [{ id: byLiveTop[0].id }]
+          }
+          return [{ id: activeColumnId as string }]
+        }
+      }
+    }
+
+    // ── Cross-column detection ──
     const pointerCollisions = pointerWithin(args)
     const itemCollisions = pointerCollisions.filter(c => !columnIds.has(c.id as string))
 
-    // Items that are valid targets for the current drag:
-    // - any item in the same column (sort or add-to-group)
-    // - groups in other columns, but only when dragging a card (add card to cross-column group)
-    const validItems = itemCollisions.filter(c => {
-      const itemColId = itemToColumnId.get(c.id as string)
-      if (itemColId === activeColumnId) return true
-      if (!activeIsGroup && (c.id as string).startsWith('group:')) return true
-      return false
-    })
-    if (validItems.length > 0) return validItems
-
-    const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
-    if (columnCollision) {
-      const columnId = columnCollision.id as string
-
-      if (columnId === activeColumnId) {
-        // Same column: return the topmost item when the pointer is above all
-        // items so the SortableContext placeholder animates to slot 0.
-        const columnContainers = args.droppableContainers.filter(
-          c => itemToColumnId.get(c.id as string) === columnId
-        )
-        const topY = Math.min(
-          ...columnContainers
-            .map(c => args.droppableRects.get(c.id)?.top ?? Infinity)
-            .filter(y => y < Infinity)
-        )
-        if (columnContainers.length > 0 && args.pointerCoordinates && args.pointerCoordinates.y < topY) {
-          const sorted = columnContainers
-            .map(c => ({ id: c.id, top: args.droppableRects.get(c.id)?.top ?? Infinity }))
-            .sort((a, b) => a.top - b.top)
-          return [{ id: sorted[0].id }]
-        }
-      }
-      // Cross-column OR same-column non-gap: return the column droppable.
-      // handleDragEnd handles cross-column as a card/group move.
-      return [columnCollision]
+    // Groups in other columns are valid add-to-group targets (rects accurate).
+    if (!activeIsGroup) {
+      const crossColGroups = itemCollisions.filter(c =>
+        (c.id as string).startsWith('group:') && itemToColumnId.get(c.id as string) !== activeColumnId
+      )
+      if (crossColGroups.length > 0) return crossColGroups
     }
+
+    // Cross-column column droppable: plain cards in other columns fall here,
+    // and handleDragEnd moves the active card/group to that column.
+    const columnCollision = pointerCollisions.find(c => columnIds.has(c.id as string))
+    if (columnCollision) return [columnCollision]
 
     return rectIntersection(args)
   }, [columnIds, itemToColumnId])
