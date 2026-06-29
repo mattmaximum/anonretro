@@ -66,6 +66,12 @@ export default function BoardPage() {
   // same-column gap drop. 'top' = pointer above all items, 'bottom' = below all.
   // handleDragEnd reads this to choose the correct mixed reorder index.
   const sameColDropPositionRef = useRef<'top' | 'bottom' | null>(null)
+  // Tracks a same-column group hover. Collision detection returns the COLUMN ID
+  // (not the group ID) when hovering a same-column group to prevent SortableContext
+  // from animating the group — which shifts its live getBoundingClientRect and causes
+  // the pointer-in/pointer-out oscillation. handleDragEnd reads this ref to route
+  // the drop to admin:card_group_add instead of the normal sort/move path.
+  const sameColGroupHitRef = useRef<string | null>(null)
   // Ghost card preview state: which column and where (top/bottom) the ghost appears.
   const [ghostTargetColumnId, setGhostTargetColumnId] = useState<string | null>(null)
   const [ghostDropPosition, setGhostDropPosition] = useState<'top' | 'bottom'>('bottom')
@@ -105,6 +111,10 @@ export default function BoardPage() {
     const px = pointerCoordinates?.x
     const py = pointerCoordinates?.y
 
+    // Reset same-column group latch each detection call. It will be re-set
+    // below if the pointer is still over a same-column group.
+    sameColGroupHitRef.current = null
+
     if (px == null || py == null) return rectIntersection(args)
 
     // ── Identify target column by X-coordinate only ──
@@ -134,7 +144,21 @@ export default function BoardPage() {
         const r = el.getBoundingClientRect()
         return px >= r.left && px <= r.right && py >= r.top && py <= r.bottom
       })
-      if (liveHit) return [{ id: liveHit.id }]
+      if (liveHit) {
+        // If the hit is a same-column group, do NOT return 'group:id' as the
+        // collision result. Returning a group ID causes SortableContext to treat
+        // it as a sort-over target and apply a CSS translateY to the group —
+        // which shifts its live getBoundingClientRect, immediately moving the
+        // group OUT of the pointer's position, then the pointer is "outside",
+        // the column is returned, items reset, the group is back, repeat →
+        // violent oscillation. Instead, return the column and track the group
+        // in sameColGroupHitRef so handleDragEnd can still stack into it.
+        if (!activeIsGroup && (liveHit.id as string).startsWith('group:')) {
+          sameColGroupHitRef.current = liveHit.id as string
+          return [{ id: activeColumnId as string }]
+        }
+        return [{ id: liveHit.id }]
+      }
 
       // No live hit — pointer is in a gap (above, below, or between items).
       const byLivePos = sameColContainers
@@ -198,7 +222,11 @@ export default function BoardPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   function handleDragOver(event: DragOverEvent) {
-    const overId = event.over ? (event.over.id as string) : null
+    const rawOverId = event.over ? (event.over.id as string) : null
+    // When hovering a same-column group, collision detection returns the column
+    // ID (to prevent SortableContext from animating the group). Override with the
+    // actual group ID so dragOverGroupId resolves correctly for GroupCard highlight.
+    const overId = sameColGroupHitRef.current ?? rawOverId
     setDragOverId(overId)
 
     // Compute ghost preview state.
@@ -410,9 +438,13 @@ export default function BoardPage() {
   function handleDragStart(event: DragStartEvent) {
     setActiveCardId(event.active.id as string)
     setGhostTargetColumnId(null)
+    sameColGroupHitRef.current = null
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    // Capture and clear same-column group latch before any state updates.
+    const sameColGroupId = sameColGroupHitRef.current
+    sameColGroupHitRef.current = null
     setActiveCardId(null)
     setDragOverId(null)
     setGhostTargetColumnId(null)
@@ -423,6 +455,25 @@ export default function BoardPage() {
     const overId = over.id as string
     const isActiveGroup = activeId.startsWith('group:')
     const isOverGroup = overId.startsWith('group:')
+
+    // ── Same-column group stack ──
+    // Collision detection returns the column ID (not the group ID) for same-column
+    // groups to prevent SortableContext oscillation. The actual group target is in
+    // sameColGroupHitRef, captured above as sameColGroupId.
+    if (sameColGroupId && !isActiveGroup) {
+      const groupId = sameColGroupId.slice('group:'.length)
+      const group = groups.find(g => g.id === groupId)
+      const card = cards.find(c => c.id === activeId)
+      if (group && card) {
+        setCards(prev => prev.filter(c => c.id !== activeId))
+        setGroups(prev => prev.map(g => g.id === groupId
+          ? { ...g, child_cards: [...g.child_cards, { ...card, group_id: groupId, column_id: group.column_id }] }
+          : g
+        ))
+        send({ type: 'admin:card_group_add', admin_token: adminToken, card_id: activeId, group_id: groupId })
+        return
+      }
+    }
 
     // ── Drop on column background/header ──
     if (columnIds.has(overId)) {
