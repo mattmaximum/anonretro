@@ -9,6 +9,19 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ---
 
+## [0.6.1] — 2026-06-29
+
+### Added
+
+- **Group membership in exports** — all three export formats now reflect card groups. CSV adds a `Group` column (`Group 1`, `Group 2`…) so grouped cards can be filtered in Excel/Sheets. JSON replaces `columns[].cards` with `columns[].items`, a typed array where each entry is either `{type: "card", ...}` or `{type: "group", totalVotes, cards: [...]}`. Markdown inserts a bold `**Group**` section header with aggregate vote count before each group's child cards (indented), followed by ungrouped cards.
+
+### Fixed
+
+- **Group stacking oscillation** — dragging a card over a group in the same column caused violent oscillation between the stacked and unstacked state. Root cause: returning the group's droppable ID from collision detection caused dnd-kit's SortableContext to CSS-translate the group card, shifting its bounding rect and triggering rapid pointer-in/out cycles. Fixed by returning the column ID instead and tracking the hovered group separately via a ref, so SortableContext never animates the group during the drag.
+- **Missing group highlight when group is at top of column** — after the oscillation fix, dragging a card over a group that was the first item in its column no longer showed the accent ring highlight. Root cause: `handleDragOver` only fires when `over.id` changes, and both "hovering in the gap above the group" and "hovering over the group" now return the same column ID. Fixed by adding a `handleDragMove` handler that reads the group-hover ref on every pointer move and keeps `dragOverId` in sync.
+
+---
+
 ## [0.6.0] — 2026-06-17
 
 ### Added

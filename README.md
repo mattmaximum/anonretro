@@ -102,7 +102,7 @@ Auth is intentionally a no-op in development when `CLERK_SECRET_KEY` is not set 
 - Timer: set duration (1–60 min) with optional label, pause, resume, cancel
 - Timer is server-led — clients count down from `expires_at`, no server ticks broadcast
 - Timer survives server restarts (`restoreTimers()` re-arms from SQLite on startup)
-- Export all cards to **CSV**, **JSON**, or **Markdown** — cards sorted by votes within each column, board name and format included in every export
+- Export all cards to **CSV**, **JSON**, or **Markdown** — cards sorted by votes within each column, board name and format included in every export. Groups are represented in each format: CSV adds a Group column, JSON uses a typed `items` array, Markdown inserts section headers with indented child cards.
 - Rename board in real time — title change broadcasts to all participants instantly
 - Delete board (hard delete, immediate)
 
@@ -218,7 +218,7 @@ Capistrano-style release management, implemented as a single parameterized bash 
 
 1. `git pull` the target branch into a shared repo directory
 2. `rsync` source into a new timestamped release directory (e.g. `releases/20260605_211125/`)
-3. `npm ci` + build (TypeScript + Vite — `VITE_*` env vars baked into the JS bundle here)
+3. `npm install` + build (TypeScript + Vite — `VITE_*` env vars baked into the JS bundle here)
 4. Atomically switch the `current` symlink to the new release
 5. `pm2 reload` for a graceful zero-downtime handoff
 6. Smoke-test `GET /api/health` — auto-rolls back to the previous release on failure

@@ -131,7 +131,7 @@ Test mode and live mode webhooks are separate — staging uses test mode, prod u
 
 1. `git fetch origin && git checkout $BRANCH && git pull origin $BRANCH` — branch-locked pull
 2. `rsync` source into a new timestamped release dir (excludes `node_modules`, `dist`, `data`, `.git`)
-3. `npm ci`
+3. `npm install`
 4. Source `.env` so `VITE_*` vars are available to Vite at build time
 5. `npm run build && npm prune --omit=dev`
 6. Record current symlink target (for auto-rollback)
