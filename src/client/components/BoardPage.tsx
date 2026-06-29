@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } fr
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin, rectIntersection } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent, DragOverEvent, CollisionDetection } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, DragOverEvent, DragMoveEvent, CollisionDetection } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CardData, GroupData, ParticipantData, TimerState, OutboundMessage } from '@shared/messages'
 import { getFormat } from '@shared/formats'
@@ -258,6 +258,29 @@ export default function BoardPage() {
     } else {
       // Pointer is over a group — accent border on GroupCard handles the visual, no ghost.
       setGhostTargetColumnId(null)
+    }
+  }
+
+  // handleDragOver only fires when event.over.id changes. For same-column group
+  // hover, collision detection returns the column ID for both "gap below group"
+  // and "inside group rect" — so over.id never changes and handleDragOver never
+  // re-fires to pick up the sameColGroupHitRef update. handleDragMove fires on
+  // every pointer move and keeps dragOverId in sync with the ref.
+  function handleDragMove(event: DragMoveEvent) {
+    const rawOverId = event.over ? (event.over.id as string) : null
+    const groupHit = sameColGroupHitRef.current
+    const overId = groupHit ?? rawOverId
+    setDragOverId(overId)
+    // Keep ghost in sync: hide it when hovering a same-column group, restore
+    // when back in the gap (column background).
+    const activeId = event.active.id as string
+    if (!activeId.startsWith('group:')) {
+      if (groupHit) {
+        setGhostTargetColumnId(null)
+      } else if (rawOverId && columnIds.has(rawOverId)) {
+        setGhostTargetColumnId(rawOverId)
+        setGhostDropPosition(sameColDropPositionRef.current ?? 'bottom')
+      }
     }
   }
 
@@ -840,7 +863,7 @@ export default function BoardPage() {
         {/* Columns — desktop */}
         <main className="flex-1 p-4 overflow-auto">
           {/* Desktop: grid */}
-          <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
             <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${fmt.columns.length}, minmax(0, 1fr))` }}>
               {fmt.columns.map(col => {
                 // Show ghost card in destination column. For cross-column: show at ghost position.
